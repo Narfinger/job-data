@@ -2,6 +2,7 @@ use ansi_term::{
     ANSIGenericString,
     Colour::{Green, Red, Yellow},
 };
+use anyhow::Context;
 use clap::{arg, command, Parser, Subcommand};
 use csv::DeserializeRecordsIter;
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,7 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
 };
+use time::{format_description, Date, OffsetDateTime};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
 
@@ -51,6 +53,14 @@ struct Cli {
     /// change the status to rejected of input
     #[arg(short, long)]
     rejected: Option<usize>,
+
+    /// open the file in editor
+    #[arg(short, long)]
+    open: bool,
+
+    // add new job status
+    #[arg(short, long, num_args = 2, value_names = ["Company Name", "Stage"])]
+    add: Option<Vec<String>>,
 }
 
 fn print(rdr: &[Record]) -> anyhow::Result<()> {
@@ -93,10 +103,26 @@ fn main() -> anyhow::Result<()> {
     if let Some(i) = cli.pending {
         rdr.get_mut(i).unwrap().status = Status::Pending;
         write(&rdr)?;
-    }
-    if let Some(i) = cli.rejected {
+    } else if let Some(i) = cli.rejected {
         rdr.get_mut(i).unwrap().status = Status::Rejected;
         write(&rdr)?;
+    } else if cli.open {
+        open::that(&PATH).context("Could not open file")?;
+    } else if let Some(v) = cli.add {
+        println!("Would add {:?}", v);
+        let format = format_description::parse("[day]-[month]-[year]")?;
+        let date = OffsetDateTime::now_utc().date().format(&format)?;
+        let r = Record {
+            last_action_date: date,
+            name: v.get(0).unwrap().clone(),
+            stage: v.get(1).unwrap().clone(),
+            additional_info: "".to_string(),
+            status: Status::Todo,
+        };
+        rdr.push(r);
+        //write(&rdr)?;
+        print(&rdr)?;
+        return Ok(());
     }
 
     print(&rdr)?;
