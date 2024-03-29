@@ -3,10 +3,11 @@ use ansi_term::{
     Colour::{Green, Red, Yellow},
 };
 use anyhow::Context;
-use clap::{arg, command, Parser, Subcommand};
-use csv::DeserializeRecordsIter;
+use clap::builder::TypedValueParser as _;
+use clap::{arg, command, Parser};
 use serde::{Deserialize, Serialize};
 use std::{
+    error::Error,
     fs::File,
     io::{BufReader, BufWriter},
 };
@@ -43,12 +44,25 @@ struct Record {
     status: Status,
 }
 
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
+fn parse_key_val<T, U>(s: &str) -> Result<(T, U), Box<dyn Error + Send + Sync + 'static>>
+where
+    T: std::str::FromStr,
+    T::Err: Error + Send + Sync + 'static,
+    U: std::str::FromStr,
+    U::Err: Error + Send + Sync + 'static,
+{
+    let pos = s
+        .find('=')
+        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
+    Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
+}
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about)]
 struct Cli {
     /// change the status to pending of input
-    #[arg(short, long)]
-    pending: Option<usize>,
+    #[arg(short, long, value_parser = parse_key_val::<usize, String>, value_names = ["index", "stage"])]
+    pending: Option<(usize, String)>,
 
     /// change the status to rejected of input
     #[arg(short, long)]
@@ -99,19 +113,24 @@ fn main() -> anyhow::Result<()> {
         .deserialize()
         .map(|r| r.unwrap())
         .collect::<Vec<Record>>();
+    let format = format_description::parse("[day]-[month]-[year]")?;
+    let date = OffsetDateTime::now_utc().date().format(&format)?;
 
     if let Some(i) = cli.pending {
-        rdr.get_mut(i).unwrap().status = Status::Pending;
+        let index = i.0;
+        let reason = i.1;
+        rdr.get_mut(index).unwrap().status = Status::Pending;
+        rdr.get_mut(index).unwrap().stage = reason;
+        rdr.get_mut(index).unwrap().last_action_date = date;
         write(&rdr)?;
     } else if let Some(i) = cli.rejected {
         rdr.get_mut(i).unwrap().status = Status::Rejected;
+        rdr.get_mut(i).unwrap().last_action_date = date;
         write(&rdr)?;
     } else if cli.open {
         open::that(&PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
         println!("Would add {:?}", v);
-        let format = format_description::parse("[day]-[month]-[year]")?;
-        let date = OffsetDateTime::now_utc().date().format(&format)?;
         let r = Record {
             last_action_date: date,
             name: v.get(0).unwrap().clone(),
