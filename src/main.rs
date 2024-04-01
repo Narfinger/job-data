@@ -15,7 +15,7 @@ use time::{format_description, Date, OffsetDateTime};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 enum Status {
     Todo,
     Pending,
@@ -34,7 +34,7 @@ impl Status {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 struct Record {
     last_action_date: String,
@@ -52,7 +52,7 @@ where
     U::Err: Error + Send + Sync + 'static,
 {
     let pos = s
-        .find('=')
+        .find(' ')
         .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
     Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
@@ -107,12 +107,20 @@ fn write(rdr: &[Record]) -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let f = File::open(PATH)?;
-    let br = BufReader::new(f);
-    let mut rdr = csv::Reader::from_reader(br)
-        .deserialize()
-        .map(|r| r.unwrap())
-        .collect::<Vec<Record>>();
+    let mut rdr = {
+        let f = File::open(PATH)?;
+        let br = BufReader::new(f);
+        let mut rdr = csv::Reader::from_reader(br)
+            .deserialize()
+            .map(|r| r.unwrap())
+            .collect::<Vec<Record>>();
+        let rej = rdr
+            .iter()
+            .filter(|a| a.status == Status::Declined || a.status == Status::Rejected);
+        let pen = rdr.iter().filter(|a| a.status == Status::Pending);
+        let todo = rdr.iter().filter(|a| a.status == Status::Todo);
+        rej.chain(pen).chain(todo).cloned().collect::<Vec<Record>>()
+    };
     let format = format_description::parse("[day]-[month]-[year]")?;
     let date = OffsetDateTime::now_utc().date().format(&format)?;
 
