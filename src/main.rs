@@ -147,7 +147,7 @@ fn main() -> anyhow::Result<()> {
             status: Status::Todo,
         };
         rdr.push(r);
-        //write(&rdr)?;
+        write(&rdr)?;
         print(&rdr)?;
         return Ok(());
     }
