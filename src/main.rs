@@ -110,7 +110,7 @@ fn main() -> anyhow::Result<()> {
     let mut rdr = {
         let f = File::open(PATH)?;
         let br = BufReader::new(f);
-        let mut rdr = csv::Reader::from_reader(br)
+        let rdr = csv::Reader::from_reader(br)
             .deserialize()
             .map(|r| r.unwrap())
             .collect::<Vec<Record>>();
@@ -136,12 +136,12 @@ fn main() -> anyhow::Result<()> {
         rdr.get_mut(i).unwrap().last_action_date = date;
         write(&rdr)?;
     } else if cli.open {
-        open::that(&PATH).context("Could not open file")?;
+        open::that(PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
         println!("Would add {:?}", v);
         let r = Record {
             last_action_date: date,
-            name: v.get(0).unwrap().clone(),
+            name: v.first().unwrap().clone(),
             stage: v.get(1).unwrap().clone(),
             additional_info: "".to_string(),
             status: Status::Todo,
