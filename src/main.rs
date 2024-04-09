@@ -7,6 +7,7 @@ use clap::builder::TypedValueParser as _;
 use clap::{arg, command, Parser};
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashMap,
     error::Error,
     fs::File,
     io::{BufReader, BufWriter},
@@ -15,7 +16,7 @@ use time::{format_description, Date, OffsetDateTime};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 enum Status {
     Todo,
     Pending,
@@ -78,6 +79,7 @@ struct Cli {
 }
 
 fn print(rdr: &[Record]) -> anyhow::Result<()> {
+    print_stats(rdr)?;
     for (i, result) in rdr.iter().enumerate() {
         let record = result;
         println!(
@@ -90,6 +92,26 @@ fn print(rdr: &[Record]) -> anyhow::Result<()> {
             record.additional_info,
         );
     }
+    Ok(())
+}
+
+fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
+    let vals = rdr.iter().fold(HashMap::new(), |mut red, elem| {
+        let val = red.get(&elem.status).unwrap_or(&0);
+        red.insert(&elem.status, val + 1);
+        red
+    });
+    println!("-------------------STATS-------------------------------------");
+    for (key, val) in vals.iter() {
+        let key_print = match key {
+            Status::Todo => Red.paint("TODO"),
+            Status::Pending => Yellow.paint("PENDING"),
+            Status::Rejected => Green.paint("REJECTED"),
+            Status::Declined => Green.paint("DECLINED"),
+        };
+        print!("{}: {}/{} |", key_print, val, rdr.len());
+    }
+    println!("\n-------------------------------------------------------------");
     Ok(())
 }
 
