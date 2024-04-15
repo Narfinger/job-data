@@ -62,8 +62,8 @@ where
 #[command(version, about, long_about)]
 struct Cli {
     /// change the status to pending of input
-    #[arg(short, long, value_parser = parse_key_val::<usize, String>, value_names = ["index", "stage"])]
-    pending: Option<(usize, String)>,
+    #[arg(short, long, value_name = "index")]
+    pending: Option<usize>,
 
     /// change the status to rejected of input
     #[arg(short, long)]
@@ -72,6 +72,10 @@ struct Cli {
     /// open the file in editor
     #[arg(short, long)]
     open: bool,
+
+    /// Status to change
+    #[arg(short,long, num_args=2, value_names = ["Index", "Status"])]
+    status_change: Option<Vec<String>>,
 
     // add new job status
     #[arg(short, long, num_args = 2, value_names = ["Company Name", "Stage"])]
@@ -83,7 +87,7 @@ fn print(rdr: &[Record]) -> anyhow::Result<()> {
     for (i, result) in rdr.iter().enumerate() {
         let record = result;
         println!(
-            "{:2} | {:-^20} | {:-^20} | {:-^20} | {:^20} | {}",
+            "{:2} | {:-^20} | {:-^20} | {:-^20} | {:^40} | {}",
             i,
             record.status.print(),
             record.last_action_date,
@@ -147,16 +151,21 @@ fn main() -> anyhow::Result<()> {
     let date = OffsetDateTime::now_utc().date().format(&format)?;
 
     if let Some(i) = cli.pending {
-        let index = i.0;
-        let reason = i.1;
+        let index = i;
         rdr.get_mut(index).unwrap().status = Status::Pending;
-        rdr.get_mut(index).unwrap().stage = reason;
         rdr.get_mut(index).unwrap().last_action_date = date;
         write(&rdr)?;
     } else if let Some(i) = cli.rejected {
         rdr.get_mut(i).unwrap().status = Status::Rejected;
         rdr.get_mut(i).unwrap().last_action_date = date;
         write(&rdr)?;
+    } else if let Some(v) = cli.status_change {
+        if let Ok(index) = v.first().unwrap().parse::<usize>() {
+            rdr.get_mut(index).unwrap().stage = v.get(1).unwrap().to_string();
+            write(&rdr)?;
+        } else {
+            println!("Not a valid integer");
+        }
     } else if cli.open {
         open::that(PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
