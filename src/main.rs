@@ -83,7 +83,7 @@ fn print(rdr: &[Record]) -> anyhow::Result<()> {
     for (i, result) in rdr.iter().enumerate() {
         let record = result;
         println!(
-            "{} | {:-^20} | {:-^20} | {:-^20} | {} | {}",
+            "{:2} | {:-^20} | {:-^20} | {:-^20} | {:^20} | {}",
             i,
             record.status.print(),
             record.last_action_date,
