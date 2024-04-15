@@ -1,7 +1,3 @@
-use ansi_term::{
-    ANSIGenericString,
-    Colour::{Green, Red, Yellow},
-};
 use anyhow::Context;
 use clap::builder::TypedValueParser as _;
 use clap::{arg, command, Parser};
@@ -13,6 +9,7 @@ use std::{
     io::{BufReader, BufWriter},
 };
 use time::{format_description, Date, OffsetDateTime};
+use yansi::{Paint, Painted};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
 
@@ -25,12 +22,12 @@ enum Status {
 }
 
 impl Status {
-    fn print(&self) -> ANSIGenericString<str> {
+    fn print(&self) -> Painted<&str> {
         match self {
-            Status::Todo => Red.paint("TODO    "),
-            Status::Pending => Yellow.paint("Pending "),
-            Status::Declined => Green.paint("Declined"),
-            Status::Rejected => Green.paint("Rejected"),
+            Status::Todo => "TODO".red(),
+            Status::Pending => "Pending".yellow(),
+            Status::Declined => "Declined".green(),
+            Status::Rejected => "Rejected".green(),
         }
     }
 }
@@ -66,7 +63,7 @@ struct Cli {
     pending: Option<usize>,
 
     /// change the status to rejected of input
-    #[arg(short, long)]
+    #[arg(short, long, value_name = "index")]
     rejected: Option<usize>,
 
     /// open the file in editor
@@ -74,7 +71,7 @@ struct Cli {
     open: bool,
 
     /// Status to change
-    #[arg(short,long, num_args=2, value_names = ["Index", "Status"])]
+    #[arg(short,long, num_args=2, value_names = ["index", "Status"])]
     status_change: Option<Vec<String>>,
 
     // add new job status
@@ -87,11 +84,11 @@ fn print(rdr: &[Record]) -> anyhow::Result<()> {
     for (i, result) in rdr.iter().enumerate() {
         let record = result;
         println!(
-            "{:2} | {:-^20} | {:-^20} | {:-^20} | {:^40} | {}",
+            "{:2} | {:-^20} | {:-^20} | {:^20} | {:^30} | {}",
             i,
             record.status.print(),
             record.last_action_date,
-            record.name,
+            record.name.bold(),
             record.stage,
             record.additional_info,
         );
@@ -107,12 +104,7 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     });
     println!("-------------------STATS-------------------------------------");
     for (key, val) in vals.iter() {
-        let key_print = match key {
-            Status::Todo => Red.paint("TODO"),
-            Status::Pending => Yellow.paint("PENDING"),
-            Status::Rejected => Green.paint("REJECTED"),
-            Status::Declined => Green.paint("DECLINED"),
-        };
+        let key_print = key.print();
         print!("{}: {}/{} |", key_print, val, rdr.len());
     }
     println!("\n-------------------------------------------------------------");
