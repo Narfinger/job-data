@@ -71,12 +71,16 @@ struct Cli {
     open: bool,
 
     /// Status to change
-    #[arg(short,long, num_args=2, value_names = ["index", "Status"])]
+    #[arg(long, num_args=2, value_names = ["index", "Status"])]
     status_change: Option<Vec<String>>,
 
     // add new job status
     #[arg(short, long, num_args = 2, value_names = ["Company Name", "Stage"])]
     add: Option<Vec<String>>,
+
+    // search for a company
+    #[arg(short, long)]
+    search: Option<String>,
 }
 
 fn print(rdr: &[Record]) -> anyhow::Result<()> {
@@ -172,6 +176,13 @@ fn main() -> anyhow::Result<()> {
         rdr.push(r);
         write(&rdr)?;
         print(&rdr)?;
+        return Ok(());
+    } else if let Some(c) = cli.search {
+        let res = rdr
+            .into_iter()
+            .filter(|r| r.name.contains(&c))
+            .collect::<Vec<Record>>();
+        print(&res)?;
         return Ok(());
     }
 
