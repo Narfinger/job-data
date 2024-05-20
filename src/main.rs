@@ -8,7 +8,7 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
 };
-use time::{format_description, Date, OffsetDateTime};
+use time::{format_description, OffsetDateTime};
 use yansi::{Paint, Painted};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
