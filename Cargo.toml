@@ -7,9 +7,9 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.86"
-clap = { version = "4.5.4", features = ["derive"] }
+clap = { version = "4.5.7", features = ["derive"] }
 csv = "1.3.0"
-open = "5.1.3"
-serde = { version = "1.0.202", features = ["derive"] }
+open = "5.1.4"
+serde = { version = "1.0.203", features = ["derive"] }
 time = { version = "0.3.36", features = ["serde", "serde-well-known", "formatting"] }
 yansi = "1.0.1"
