@@ -109,7 +109,7 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     println!("-------------------STATS-------------------------------------");
     for (key, val) in vals.iter() {
         let key_print = key.print();
-        print!("{}: {}/{} |", key_print, val, rdr.len());
+        print!("{}: {}/{} | ", key_print, val, rdr.len());
     }
     println!("\n-------------------------------------------------------------");
     Ok(())
