@@ -115,12 +115,19 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
         red.insert(&elem.status, val + 1);
         red
     });
-    println!("-------------------STATS-------------------------------------");
+    println!("-------------------STATS----------------------------------------");
     for (key, val) in vals.iter() {
         let key_print = key.print();
-        print!("{}: {}/{} | ", key_print, val, rdr.len());
+        let percentage: f64 = (*val as f64) / (rdr.len() as f64);
+        print!(
+            "{}: {}/{} ({:.2}%)| ",
+            key_print,
+            val,
+            rdr.len(),
+            percentage
+        );
     }
-    println!("\n-------------------------------------------------------------");
+    println!("\n----------------------------------------------------------------");
     Ok(())
 }
 
