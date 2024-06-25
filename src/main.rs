@@ -37,6 +37,7 @@ impl Status {
 struct Record {
     last_action_date: String,
     name: String,
+    subname: String,
     stage: String,
     additional_info: String,
     status: Status,
@@ -75,26 +76,34 @@ struct Cli {
     status_change: Option<Vec<String>>,
 
     // add new job status
-    #[arg(short, long, num_args = 2, value_names = ["Company Name", "Stage"])]
+    #[arg(short, long, num_args = 2, value_names = ["Company Name", "Sub Name"])]
     add: Option<Vec<String>>,
 
     // search for a company
     #[arg(short, long)]
     search: Option<String>,
+
+    // show full entry for one
+    #[arg(short, long)]
+    info: Option<usize>,
 }
 
-fn print(rdr: &[Record]) -> anyhow::Result<()> {
+fn print(rdr: &[Record], truncate: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
-    for (i, result) in rdr.iter().enumerate() {
-        let record = result;
+    for (i, record) in rdr.iter().enumerate() {
+        let mut r = record.additional_info.clone();
+        if truncate {
+            r.truncate(30);
+        }
         println!(
-            "{:2} | {:-^20} | {:-^20} | {:^20} | {:^30} | {}",
+            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
             i,
             record.status.print(),
             record.last_action_date,
             record.name.bold(),
+            record.subname.bold(),
             record.stage,
-            record.additional_info,
+            r,
         );
     }
     Ok(())
@@ -169,24 +178,33 @@ fn main() -> anyhow::Result<()> {
         let r = Record {
             last_action_date: date,
             name: v.first().unwrap().clone(),
-            stage: v.get(1).unwrap().clone(),
+            subname: v.get(1).unwrap().clone(),
+            stage: "Pending".to_string(),
             additional_info: "".to_string(),
             status: Status::Todo,
         };
         rdr.push(r);
         write(&rdr)?;
-        print(&rdr)?;
+        print(&rdr, true)?;
         return Ok(());
     } else if let Some(c) = cli.search {
         let res = rdr
             .into_iter()
             .filter(|r| r.name.contains(&c))
             .collect::<Vec<Record>>();
-        print(&res)?;
+        print(&res, false)?;
+        return Ok(());
+    } else if let Some(c) = cli.info {
+        if let Some(res) = rdr.get(c) {
+            let r = vec![res.clone()];
+            print(&r, false)?;
+        } else {
+            println!("Could not find record");
+        }
         return Ok(());
     }
 
-    print(&rdr)?;
+    print(&rdr, true)?;
 
     Ok(())
 }
