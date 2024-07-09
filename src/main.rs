@@ -1,5 +1,4 @@
 use anyhow::Context;
-use clap::builder::TypedValueParser as _;
 use clap::{arg, command, Parser};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -59,6 +58,10 @@ where
 #[derive(Parser, Debug)]
 #[command(version, about, long_about)]
 struct Cli {
+    /// show all values
+    #[arg(long)]
+    all: bool,
+
     /// change the status to pending of input
     #[arg(short, long, value_name = "index")]
     pending: Option<usize>,
@@ -67,44 +70,62 @@ struct Cli {
     #[arg(short, long, value_name = "index")]
     rejected: Option<usize>,
 
+    /// set to todo
+    #[arg(short, long, value_name = "index")]
+    todo: Option<usize>,
+
+    /// show full entry for one
+    #[arg(short, long, value_name = "index")]
+    info: Option<usize>,
+
     /// open the file in editor
     #[arg(short, long)]
     open: bool,
 
     /// Status to change
-    #[arg(long, num_args=2, value_names = ["index", "Status"])]
-    status_change: Option<Vec<String>>,
+    #[arg(long, num_args=2, value_names = ["index", "Info"])]
+    info_change: Option<Vec<String>>,
 
-    // add new job status
+    /// add new job status
     #[arg(short, long, num_args = 2, value_names = ["Company Name", "Sub Name"])]
     add: Option<Vec<String>>,
 
-    // search for a company
+    /// search for a company
     #[arg(short, long)]
     search: Option<String>,
-
-    // show full entry for one
-    #[arg(short, long)]
-    info: Option<usize>,
 }
 
-fn print(rdr: &[Record], truncate: bool) -> anyhow::Result<()> {
+fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
+    println!(
+        "{:2} | {:^10} | {:^20} | {:^20} | {:^37} | {:^30} | {}",
+        "",
+        "Status".underline(),
+        "Last Date".underline(),
+        "Name".underline(),
+        "Subname".underline(),
+        "Stage".underline(),
+        "Info".underline()
+    );
+
     for (i, record) in rdr.iter().enumerate() {
-        let mut r = record.additional_info.clone();
-        if truncate {
-            r.truncate(30);
+        // we want to keep the record numbers the same
+        if show_all || record.status == Status::Pending || record.status == Status::Todo {
+            let mut r = record.additional_info.clone();
+            if truncate {
+                r.truncate(30);
+            }
+            println!(
+                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
+                i,
+                record.status.print(),
+                record.last_action_date,
+                record.name.bold(),
+                record.subname.bold(),
+                record.stage,
+                r,
+            );
         }
-        println!(
-            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-            i,
-            record.status.print(),
-            record.last_action_date,
-            record.name.bold(),
-            record.subname.bold(),
-            record.stage,
-            r,
-        );
     }
     Ok(())
 }
@@ -171,9 +192,14 @@ fn main() -> anyhow::Result<()> {
         rdr.get_mut(i).unwrap().status = Status::Rejected;
         rdr.get_mut(i).unwrap().last_action_date = date;
         write(&rdr)?;
-    } else if let Some(v) = cli.status_change {
-        if let Ok(index) = v.first().unwrap().parse::<usize>() {
-            rdr.get_mut(index).unwrap().stage = v.get(1).unwrap().to_string();
+    } else if let Some(i) = cli.todo {
+        rdr.get_mut(i).unwrap().status = Status::Todo;
+        rdr.get_mut(i).unwrap().last_action_date = date;
+        write(&rdr)?;
+    } else if let Some(v) = cli.info_change {
+        if let Ok(i) = v.first().unwrap().parse::<usize>() {
+            rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
+            rdr.get_mut(i).unwrap().last_action_date = date;
             write(&rdr)?;
         } else {
             println!("Not a valid integer");
@@ -192,26 +218,26 @@ fn main() -> anyhow::Result<()> {
         };
         rdr.push(r);
         write(&rdr)?;
-        print(&rdr, true)?;
+        print(&rdr, true, true)?;
         return Ok(());
     } else if let Some(c) = cli.search {
         let res = rdr
             .into_iter()
             .filter(|r| r.name.contains(&c))
             .collect::<Vec<Record>>();
-        print(&res, false)?;
+        print(&res, false, true)?;
         return Ok(());
     } else if let Some(c) = cli.info {
         if let Some(res) = rdr.get(c) {
             let r = vec![res.clone()];
-            print(&r, false)?;
+            print(&r, false, true)?;
         } else {
             println!("Could not find record");
         }
         return Ok(());
     }
 
-    print(&rdr, true)?;
+    print(&rdr, true, cli.all)?;
 
     Ok(())
 }
