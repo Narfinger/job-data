@@ -82,9 +82,13 @@ struct Cli {
     #[arg(short, long)]
     open: bool,
 
-    /// Status to change
+    /// Info to change
     #[arg(long, num_args=2, value_names = ["index", "Info"])]
     info_change: Option<Vec<String>>,
+
+    /// stage  to change
+    #[arg(long, num_args=2, value_names = ["index", "Stage"])]
+    stage_change: Option<Vec<String>>,
 
     /// add new job status
     #[arg(short, long, num_args = 2, value_names = ["Company Name", "Sub Name"])]
@@ -204,10 +208,17 @@ fn main() -> anyhow::Result<()> {
         } else {
             println!("Not a valid integer");
         }
+    } else if let Some(v) = cli.stage_change {
+        if let Ok(i) = v.first().unwrap().parse::<usize>() {
+            rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
+            rdr.get_mut(i).unwrap().last_action_date = date;
+            write(&rdr)?;
+        } else {
+            println!("Not a valid integer");
+        }
     } else if cli.open {
         open::that(PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
-        println!("Would add {:?}", v);
         let r = Record {
             last_action_date: date,
             name: v.first().unwrap().clone(),
