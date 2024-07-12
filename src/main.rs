@@ -1,5 +1,6 @@
 use anyhow::Context;
 use clap::{arg, command, Parser};
+use inquire::Confirm;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -167,6 +168,33 @@ fn write(rdr: &[Record]) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn ask_if_change(rdr: &[Record], index: usize) -> bool {
+    let rec = rdr.get(index).unwrap();
+    let ans = Confirm::new(&format!(
+        "Do you want to change {} | {}",
+        rec.name, rec.subname
+    ))
+    .with_default(false)
+    .prompt();
+
+    match ans {
+        Ok(true) => true,
+        Ok(false) => false,
+        Err(_) => false,
+    }
+}
+
+fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Result<()> {
+    if ask_if_change(rdr, index) {
+        let format = format_description::parse("[day]-[month]-[year]")?;
+        let date = OffsetDateTime::now_utc().date().format(&format)?;
+        rdr.get_mut(index).unwrap().status = status;
+        rdr.get_mut(index).unwrap().last_action_date = date;
+        write(&rdr)?;
+    }
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
@@ -184,41 +212,42 @@ fn main() -> anyhow::Result<()> {
         let todo = rdr.iter().filter(|a| a.status == Status::Todo);
         rej.chain(pen).chain(todo).cloned().collect::<Vec<Record>>()
     };
-    let format = format_description::parse("[day]-[month]-[year]")?;
-    let date = OffsetDateTime::now_utc().date().format(&format)?;
 
     if let Some(i) = cli.pending {
-        let index = i;
-        rdr.get_mut(index).unwrap().status = Status::Pending;
-        rdr.get_mut(index).unwrap().last_action_date = date;
-        write(&rdr)?;
+        change_status(&mut rdr, i, Status::Pending)?;
     } else if let Some(i) = cli.rejected {
-        rdr.get_mut(i).unwrap().status = Status::Rejected;
-        rdr.get_mut(i).unwrap().last_action_date = date;
-        write(&rdr)?;
+        change_status(&mut rdr, i, Status::Rejected)?;
     } else if let Some(i) = cli.todo {
-        rdr.get_mut(i).unwrap().status = Status::Todo;
-        rdr.get_mut(i).unwrap().last_action_date = date;
-        write(&rdr)?;
+        change_status(&mut rdr, i, Status::Todo)?;
     } else if let Some(v) = cli.info_change {
+        let format = format_description::parse("[day]-[month]-[year]")?;
+        let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
-            rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
-            rdr.get_mut(i).unwrap().last_action_date = date;
-            write(&rdr)?;
+            if ask_if_change(&rdr, i) {
+                rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
+                rdr.get_mut(i).unwrap().last_action_date = date;
+                write(&rdr)?;
+            }
         } else {
             println!("Not a valid integer");
         }
     } else if let Some(v) = cli.stage_change {
+        let format = format_description::parse("[day]-[month]-[year]")?;
+        let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
-            rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
-            rdr.get_mut(i).unwrap().last_action_date = date;
-            write(&rdr)?;
+            if ask_if_change(&rdr, i) {
+                rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
+                rdr.get_mut(i).unwrap().last_action_date = date;
+                write(&rdr)?;
+            }
         } else {
             println!("Not a valid integer");
         }
     } else if cli.open {
         open::that(PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
+        let format = format_description::parse("[day]-[month]-[year]")?;
+        let date = OffsetDateTime::now_utc().date().format(&format)?;
         let r = Record {
             last_action_date: date,
             name: v.first().unwrap().clone(),
