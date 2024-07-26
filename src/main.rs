@@ -190,7 +190,7 @@ fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Re
         let date = OffsetDateTime::now_utc().date().format(&format)?;
         rdr.get_mut(index).unwrap().status = status;
         rdr.get_mut(index).unwrap().last_action_date = date;
-        write(&rdr)?;
+        write(rdr)?;
     }
     Ok(())
 }
