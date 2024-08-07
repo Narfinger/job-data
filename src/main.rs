@@ -8,7 +8,7 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
 };
-use time::{format_description, OffsetDateTime};
+use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, UtcOffset};
 use yansi::{Paint, Painted};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
@@ -19,6 +19,17 @@ enum Status {
     Pending,
     Rejected,
     Declined,
+}
+
+impl std::fmt::Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Status::Todo => f.write_str("Todo"),
+            Status::Pending => f.write_str("Pending"),
+            Status::Rejected => f.write_str("Rejected"),
+            Status::Declined => f.write_str("Declined"),
+        }
+    }
 }
 
 impl Status {
@@ -92,7 +103,7 @@ struct Cli {
     stage_change: Option<Vec<String>>,
 
     /// add new job status
-    #[arg(short, long, num_args = 2, value_names = ["Company Name", "Sub Name"])]
+    #[arg(short, long, num_args = 2..=3, value_names = ["Company Name", "Sub Name", "Additional Info"])]
     add: Option<Vec<String>>,
 
     /// search for a company
@@ -113,6 +124,10 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
         "Info".underline()
     );
 
+    let format = format_description::parse("[day]-[month]-[year]")
+        .context("time format description error")?;
+    let now = OffsetDateTime::now_local().context("Cannot get now")?;
+    let current_offset = UtcOffset::current_local_offset().context("Could not get offset")?;
     for (i, record) in rdr.iter().enumerate() {
         // we want to keep the record numbers the same
         if show_all || record.status == Status::Pending || record.status == Status::Todo {
@@ -120,16 +135,35 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
             if truncate {
                 r.truncate(30);
             }
-            println!(
-                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-                i,
-                record.status.print(),
-                record.last_action_date,
-                record.name.bold(),
-                record.subname.bold(),
-                record.stage,
-                r,
-            );
+            let d_primitive_date = Date::parse(&record.last_action_date, &format)
+                .context("Cannot parse primitive date")?;
+            let d_primitive = d_primitive_date
+                .with_hms(0, 0, 0)
+                .context("Could not add time")?;
+            let d = d_primitive.assume_offset(current_offset);
+            if record.status != Status::Todo && now - d >= Duration::weeks(2) {
+                println!(
+                    "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
+                    i.dim(),
+                    record.status.print().dim(),
+                    record.last_action_date.dim(),
+                    record.name.bold().dim(),
+                    record.subname.bold().dim(),
+                    record.stage.dim(),
+                    r.dim(),
+                );
+            } else {
+                println!(
+                    "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
+                    i,
+                    record.status.print(),
+                    record.last_action_date,
+                    record.name.bold(),
+                    record.subname.bold(),
+                    record.stage,
+                    r,
+                );
+            }
         }
     }
     Ok(())
@@ -168,11 +202,27 @@ fn write(rdr: &[Record]) -> anyhow::Result<()> {
     Ok(())
 }
 
+fn ask_if_change_status(rdr: &[Record], index: usize, new_stage: &Status) -> bool {
+    let rec = rdr.get(index).unwrap();
+    let ans = Confirm::new(&format!(
+        "Do you want to change {} | {} from {} to {}",
+        rec.name, rec.subname, rec.status, new_stage
+    ))
+    .with_default(false)
+    .prompt();
+
+    match ans {
+        Ok(true) => true,
+        Ok(false) => false,
+        Err(_) => false,
+    }
+}
+
 fn ask_if_change(rdr: &[Record], index: usize) -> bool {
     let rec = rdr.get(index).unwrap();
     let ans = Confirm::new(&format!(
         "Do you want to change {} | {}",
-        rec.name, rec.subname
+        rec.name, rec.subname,
     ))
     .with_default(false)
     .prompt();
@@ -185,7 +235,7 @@ fn ask_if_change(rdr: &[Record], index: usize) -> bool {
 }
 
 fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Result<()> {
-    if ask_if_change(rdr, index) {
+    if ask_if_change_status(rdr, index, &status) {
         let format = format_description::parse("[day]-[month]-[year]")?;
         let date = OffsetDateTime::now_utc().date().format(&format)?;
         rdr.get_mut(index).unwrap().status = status;
@@ -223,6 +273,11 @@ fn main() -> anyhow::Result<()> {
         let format = format_description::parse("[day]-[month]-[year]")?;
         let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
+            println!(
+                "Chainging from {} to {}",
+                rdr.get(i).unwrap().additional_info,
+                &v.get(1).unwrap().to_string(),
+            );
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
                 rdr.get_mut(i).unwrap().last_action_date = date;
@@ -235,6 +290,11 @@ fn main() -> anyhow::Result<()> {
         let format = format_description::parse("[day]-[month]-[year]")?;
         let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
+            println!(
+                "Chainging from {} to {}",
+                rdr.get(i).unwrap().stage,
+                &v.get(1).unwrap(),
+            );
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
                 rdr.get_mut(i).unwrap().last_action_date = date;
@@ -253,7 +313,7 @@ fn main() -> anyhow::Result<()> {
             name: v.first().unwrap().clone(),
             subname: v.get(1).unwrap().clone(),
             stage: "Pending".to_string(),
-            additional_info: "".to_string(),
+            additional_info: v.get(2).unwrap_or(&String::new()).clone(),
             status: Status::Todo,
         };
         rdr.push(r);
