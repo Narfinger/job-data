@@ -4,11 +4,10 @@ use inquire::Confirm;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
-    error::Error,
     fs::File,
     io::{BufReader, BufWriter},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, PrimitiveDateTime, UtcOffset};
+use time::{format_description, Date, Duration, OffsetDateTime, UtcOffset};
 use yansi::{Paint, Painted};
 
 const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
@@ -52,19 +51,6 @@ struct Record {
     stage: String,
     additional_info: String,
     status: Status,
-}
-
-fn parse_key_val<T, U>(s: &str) -> Result<(T, U), Box<dyn Error + Send + Sync + 'static>>
-where
-    T: std::str::FromStr,
-    T::Err: Error + Send + Sync + 'static,
-    U: std::str::FromStr,
-    U::Err: Error + Send + Sync + 'static,
-{
-    let pos = s
-        .find(' ')
-        .ok_or_else(|| format!("invalid KEY=value: no `=` found in `{s}`"))?;
-    Ok((s[..pos].parse()?, s[pos + 1..].parse()?))
 }
 
 #[derive(Parser, Debug)]
@@ -111,6 +97,53 @@ struct Cli {
     search: Option<String>,
 }
 
+/// print one entry
+fn print_record(
+    i: usize,
+    record: &Record,
+    truncate: bool,
+    current_offset: UtcOffset,
+    now: OffsetDateTime,
+) -> anyhow::Result<()> {
+    let format = format_description::parse("[day]-[month]-[year]")
+        .context("time format description error")?;
+    let mut r = record.additional_info.clone();
+    if truncate {
+        r.truncate(30);
+    }
+    let d_primitive_date =
+        Date::parse(&record.last_action_date, &format).context("Cannot parse primitive date")?;
+    let d_primitive = d_primitive_date
+        .with_hms(0, 0, 0)
+        .context("Could not add time")?;
+    let d = d_primitive.assume_offset(current_offset);
+    if record.status != Status::Todo && now - d >= Duration::weeks(2) {
+        println!(
+            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
+            i.dim(),
+            record.status.print().dim(),
+            record.last_action_date.dim(),
+            record.name.bold().dim(),
+            record.subname.bold().dim(),
+            record.stage.dim(),
+            r.dim(),
+        );
+    } else {
+        println!(
+            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
+            i,
+            record.status.print(),
+            record.last_action_date,
+            record.name.bold(),
+            record.subname.bold(),
+            record.stage,
+            r,
+        );
+    }
+    Ok(())
+}
+
+/// print all entries
 fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
     println!(
@@ -124,51 +157,18 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
         "Info".underline()
     );
 
-    let format = format_description::parse("[day]-[month]-[year]")
-        .context("time format description error")?;
     let now = OffsetDateTime::now_local().context("Cannot get now")?;
     let current_offset = UtcOffset::current_local_offset().context("Could not get offset")?;
     for (i, record) in rdr.iter().enumerate() {
         // we want to keep the record numbers the same
         if show_all || record.status == Status::Pending || record.status == Status::Todo {
-            let mut r = record.additional_info.clone();
-            if truncate {
-                r.truncate(30);
-            }
-            let d_primitive_date = Date::parse(&record.last_action_date, &format)
-                .context("Cannot parse primitive date")?;
-            let d_primitive = d_primitive_date
-                .with_hms(0, 0, 0)
-                .context("Could not add time")?;
-            let d = d_primitive.assume_offset(current_offset);
-            if record.status != Status::Todo && now - d >= Duration::weeks(2) {
-                println!(
-                    "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-                    i.dim(),
-                    record.status.print().dim(),
-                    record.last_action_date.dim(),
-                    record.name.bold().dim(),
-                    record.subname.bold().dim(),
-                    record.stage.dim(),
-                    r.dim(),
-                );
-            } else {
-                println!(
-                    "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-                    i,
-                    record.status.print(),
-                    record.last_action_date,
-                    record.name.bold(),
-                    record.subname.bold(),
-                    record.stage,
-                    r,
-                );
-            }
+            print_record(i, record, truncate, current_offset, now)?;
         }
     }
     Ok(())
 }
 
+/// print the stats
 fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     let vals = rdr.iter().fold(HashMap::new(), |mut red, elem| {
         let val = red.get(&elem.status).unwrap_or(&0);
@@ -191,6 +191,7 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// write records to file
 fn write(rdr: &[Record]) -> anyhow::Result<()> {
     let f = File::create(PATH)?;
     let br = BufWriter::new(f);
@@ -202,6 +203,7 @@ fn write(rdr: &[Record]) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// ask if we should change the status
 fn ask_if_change_status(rdr: &[Record], index: usize, new_stage: &Status) -> bool {
     let rec = rdr.get(index).unwrap();
     let ans = Confirm::new(&format!(
@@ -218,6 +220,7 @@ fn ask_if_change_status(rdr: &[Record], index: usize, new_stage: &Status) -> boo
     }
 }
 
+/// ask if we should change
 fn ask_if_change(rdr: &[Record], index: usize) -> bool {
     let rec = rdr.get(index).unwrap();
     let ans = Confirm::new(&format!(
