@@ -1,15 +1,14 @@
 use anyhow::Context;
 use clap::{arg, command, Parser};
 use inquire::Confirm;
-use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     fs::File,
     io::{BufReader, BufWriter},
 };
-use time::{format_description, Date, Duration, OffsetDateTime, UtcOffset};
+use time::{format_description, OffsetDateTime, UtcOffset};
 use types::{Record, Status};
-use yansi::{Paint, Painted};
+use yansi::Paint;
 
 mod gui;
 mod types;
@@ -257,8 +256,13 @@ fn main() -> anyhow::Result<()> {
         }
         return Ok(());
     } else if cli.tui {
-        gui::run(&mut rdr)?;
-        write(&rdr)?;
+        match gui::run(&mut rdr)? {
+            types::Save::Save => {
+                println!("We are saving");
+                write(&rdr)?
+            }
+            types::Save::DoNotSave => println!("We did not save!"),
+        };
         return Ok(());
     }
 

@@ -9,14 +9,19 @@ use ratatui::{
 };
 use std::io::stdout;
 
-use crate::types::{Record, Status};
+use crate::types::{Record, Save, Status};
 
-fn draw_record<'a>(index: usize, r: &'a Record) -> Row<'a> {
+struct GuiState {
+    table_state: TableState,
+    show_all: bool,
+}
+
+fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
-        Status::Todo => Color::Green,
+        Status::Todo => Color::Red,
         Status::Pending => Color::Yellow,
-        Status::Rejected => Color::Red,
-        Status::Declined => Color::Red,
+        Status::Rejected => Color::Green,
+        Status::Declined => Color::Green,
     };
     Row::new(vec![
         index.to_string(),
@@ -28,16 +33,19 @@ fn draw_record<'a>(index: usize, r: &'a Record) -> Row<'a> {
     ])
     .style(Style::default().fg(color))
 }
-fn draw<'a>(rdr: &'a mut [Record]) -> impl StatefulWidget<State = TableState> + 'a {
+fn draw<'a>(rdr: &'a mut [Record], show_all: bool) -> impl StatefulWidget<State = TableState> + 'a {
     let rows = rdr
         .iter()
+        .rev()
+        .filter(|r| show_all || r.status == Status::Todo || r.status == Status::Pending)
         .enumerate()
         .map(|(index, r)| draw_record(index, r));
 
     // Columns widths are constrained in the same way as Layout...
     let widths = [
-        Constraint::Length(10),
+        Constraint::Length(5),
         Constraint::Length(20),
+        Constraint::Length(30),
         Constraint::Length(30),
         Constraint::Length(30),
         Constraint::Length(20),
@@ -45,7 +53,7 @@ fn draw<'a>(rdr: &'a mut [Record]) -> impl StatefulWidget<State = TableState> + 
     Table::new(rows, widths)
         .column_spacing(1)
         .header(
-            Row::new(vec!["Status", "LastDate", "Name", "Subname", "Info"])
+            Row::new(vec!["#", "Status", "LastDate", "Name", "Subname", "Info"])
                 .style(Style::new().bold()),
         )
         .block(Block::new().title("Table"))
@@ -53,44 +61,59 @@ fn draw<'a>(rdr: &'a mut [Record]) -> impl StatefulWidget<State = TableState> + 
         .highlight_symbol(">>")
 }
 
-pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
+pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
+    let save_state;
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
     terminal.clear()?;
 
-    // TODO main loop
-    let mut table_state = TableState::default();
-    table_state.select_first();
+    let mut state = GuiState {
+        table_state: TableState::default().with_selected(Some(0)),
+        show_all: false,
+    };
+
     loop {
         terminal.draw(|frame| {
             let area = frame.area();
-            frame.render_stateful_widget(draw(rdr), area, &mut table_state);
+            frame.render_stateful_widget(draw(rdr, state.show_all), area, &mut state.table_state);
         })?;
         // TODO handle events
         if event::poll(std::time::Duration::from_millis(16))? {
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     match key.code {
-                        KeyCode::Char('q') => break,
+                        KeyCode::Esc => {
+                            save_state = Save::DoNotSave;
+                            break;
+                        }
+                        KeyCode::Char('q') => {
+                            save_state = Save::Save;
+                            break;
+                        }
                         KeyCode::Up => {
-                            table_state.select_previous();
+                            state.table_state.select_previous();
                         }
                         KeyCode::Down => {
-                            table_state.select_next();
+                            state.table_state.select_next();
+                        }
+                        KeyCode::PageUp => {
+                            state.table_state.select_first();
+                        }
+                        KeyCode::PageDown => {
+                            state.table_state.select_last();
                         }
                         KeyCode::Enter => {
-                            if let Some(record) =
-                                table_state.selected().and_then(|i| rdr.get_mut(i))
+                            if let Some(record) = state
+                                .table_state
+                                .selected()
+                                .and_then(|i| rdr.get_mut(rdr.len() - 1 - i))
                             {
                                 record.next_stage();
                             }
                         }
-                        KeyCode::PageUp => {
-                            table_state.select_first();
-                        }
-                        KeyCode::PageDown => {
-                            table_state.select_last();
+                        KeyCode::Char('a') => {
+                            state.show_all = !state.show_all;
                         }
                         _ => {}
                     }
@@ -101,5 +124,5 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
 
     stdout().execute(LeaveAlternateScreen)?;
     disable_raw_mode()?;
-    Ok(())
+    Ok(save_state)
 }

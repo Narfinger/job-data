@@ -3,6 +3,12 @@ use serde::{Deserialize, Serialize};
 use time::{format_description, Date, Duration, OffsetDateTime, UtcOffset};
 use yansi::{Paint, Painted};
 
+#[derive(Debug)]
+pub(crate) enum Save {
+    Save,
+    DoNotSave,
+}
+
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub(crate) enum Status {
     Todo,
