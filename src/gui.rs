@@ -1,5 +1,3 @@
-use anyhow::Context;
-use layout::Rows;
 use ratatui::{
     crossterm::{
         event::{self, KeyCode, KeyEventKind},
@@ -10,24 +8,31 @@ use ratatui::{
     widgets::{Block, Row, Table, TableState},
 };
 use std::io::stdout;
-use time::{format_description, Date, OffsetDateTime, UtcOffset};
 
 use crate::types::{Record, Status};
 
-fn draw_record(r: &Record) -> Vec<String> {
-    vec![
+fn draw_record<'a>(index: usize, r: &'a Record) -> Row<'a> {
+    let color = match r.status {
+        Status::Todo => Color::Green,
+        Status::Pending => Color::Yellow,
+        Status::Rejected => Color::Red,
+        Status::Declined => Color::Red,
+    };
+    Row::new(vec![
+        index.to_string(),
         r.status.to_string(),
         r.last_action_date.to_owned(),
         r.name.to_owned(),
         r.subname.to_owned(),
         r.stage.to_owned(),
-    ]
+    ])
+    .style(Style::default().fg(color))
 }
-fn draw(rdr: &mut [Record]) -> impl StatefulWidget<State = TableState> {
+fn draw<'a>(rdr: &'a mut [Record]) -> impl StatefulWidget<State = TableState> + 'a {
     let rows = rdr
         .iter()
-        .filter(|r| r.status == Status::Pending || r.status == Status::Todo)
-        .map(|r| Row::new(draw_record(r)));
+        .enumerate()
+        .map(|(index, r)| draw_record(index, r));
 
     // Columns widths are constrained in the same way as Layout...
     let widths = [
@@ -74,8 +79,18 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
                         KeyCode::Down => {
                             table_state.select_next();
                         }
-                        KeyCode::Char('i') => {
-                            
+                        KeyCode::Enter => {
+                            if let Some(record) =
+                                table_state.selected().and_then(|i| rdr.get_mut(i))
+                            {
+                                record.next_stage();
+                            }
+                        }
+                        KeyCode::PageUp => {
+                            table_state.select_first();
+                        }
+                        KeyCode::PageDown => {
+                            table_state.select_last();
                         }
                         _ => {}
                     }

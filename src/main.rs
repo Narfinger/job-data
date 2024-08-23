@@ -64,52 +64,6 @@ struct Cli {
     tui: bool,
 }
 
-/// print one entry
-fn print_record(
-    i: usize,
-    record: &Record,
-    truncate: bool,
-    current_offset: UtcOffset,
-    now: OffsetDateTime,
-) -> anyhow::Result<()> {
-    let format = format_description::parse("[day]-[month]-[year]")
-        .context("time format description error")?;
-    let mut r = record.additional_info.clone();
-    if truncate {
-        r.truncate(30);
-    }
-    let d_primitive_date =
-        Date::parse(&record.last_action_date, &format).context("Cannot parse primitive date")?;
-    let d_primitive = d_primitive_date
-        .with_hms(0, 0, 0)
-        .context("Could not add time")?;
-    let d = d_primitive.assume_offset(current_offset);
-    if record.status != Status::Todo && now - d >= Duration::weeks(2) {
-        println!(
-            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-            i.dim(),
-            record.status.print().dim(),
-            record.last_action_date.dim(),
-            record.name.bold().dim(),
-            record.subname.bold().dim(),
-            record.stage.dim(),
-            r.dim(),
-        );
-    } else {
-        println!(
-            "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-            i,
-            record.status.print(),
-            record.last_action_date,
-            record.name.bold(),
-            record.subname.bold(),
-            record.stage,
-            r,
-        );
-    }
-    Ok(())
-}
-
 /// print all entries
 fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
@@ -129,7 +83,7 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
     for (i, record) in rdr.iter().enumerate() {
         // we want to keep the record numbers the same
         if show_all || record.status == Status::Pending || record.status == Status::Todo {
-            print_record(i, record, truncate, current_offset, now)?;
+            record.print(i, truncate, current_offset, now)?;
         }
     }
     Ok(())
@@ -206,10 +160,7 @@ fn ask_if_change(rdr: &[Record], index: usize) -> bool {
 
 fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Result<()> {
     if ask_if_change_status(rdr, index, &status) {
-        let format = format_description::parse("[day]-[month]-[year]")?;
-        let date = OffsetDateTime::now_utc().date().format(&format)?;
-        rdr.get_mut(index).unwrap().status = status;
-        rdr.get_mut(index).unwrap().last_action_date = date;
+        rdr.get_mut(index).unwrap().set_status(status);
         write(rdr)?;
     }
     Ok(())
@@ -306,7 +257,8 @@ fn main() -> anyhow::Result<()> {
         }
         return Ok(());
     } else if cli.tui {
-        gui::run(&mut rdr);
+        gui::run(&mut rdr)?;
+        write(&rdr)?;
         return Ok(());
     }
 
