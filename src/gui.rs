@@ -9,17 +9,23 @@ use ratatui::{
 };
 use std::io::stdout;
 
-use crate::types::{Record, Save, Status};
+use crate::types::{GuiView, Record, Save, Status};
 
 struct GuiState {
     table_state: TableState,
-    show_all: bool,
+    view: GuiView,
 }
 
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
         Status::Todo => Color::Red,
-        Status::Pending => Color::Yellow,
+        Status::Pending => {
+            if r.is_old() {
+                Color::DarkGray
+            } else {
+                Color::Yellow
+            }
+        }
         Status::Rejected => Color::Green,
         Status::Declined => Color::Green,
     };
@@ -33,11 +39,21 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     ])
     .style(Style::default().fg(color))
 }
-fn draw<'a>(rdr: &'a mut [Record], show_all: bool) -> impl StatefulWidget<State = TableState> + 'a {
+
+fn gui_filter(r: &Record, view: &GuiView) -> bool {
+    r.status == Status::Todo
+        || match view {
+            GuiView::Normal => r.status == Status::Pending && !r.is_old(),
+            GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
+            GuiView::All => true,
+        }
+}
+
+fn draw<'a>(rdr: &'a mut [Record], view: GuiView) -> impl StatefulWidget<State = TableState> + 'a {
     let rows = rdr
         .iter()
         .rev()
-        .filter(|r| show_all || r.status == Status::Todo || r.status == Status::Pending)
+        .filter(|r| gui_filter(r, &view))
         .enumerate()
         .map(|(index, r)| draw_record(index, r));
 
@@ -70,13 +86,13 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
 
     let mut state = GuiState {
         table_state: TableState::default().with_selected(Some(0)),
-        show_all: false,
+        view: GuiView::Normal,
     };
 
     loop {
         terminal.draw(|frame| {
             let area = frame.area();
-            frame.render_stateful_widget(draw(rdr, state.show_all), area, &mut state.table_state);
+            frame.render_stateful_widget(draw(rdr, state.view), area, &mut state.table_state);
         })?;
         // TODO handle events
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -113,7 +129,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                             }
                         }
                         KeyCode::Char('a') => {
-                            state.show_all = !state.show_all;
+                            state.view = state.view.next();
                         }
                         _ => {}
                     }

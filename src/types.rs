@@ -1,7 +1,27 @@
+use std::sync::LazyLock;
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
-use time::{format_description, Date, Duration, OffsetDateTime, UtcOffset};
+use time::{
+    format_description::{self, BorrowedFormatItem},
+    Date, Duration, OffsetDateTime, UtcOffset,
+};
 use yansi::{Paint, Painted};
+
+pub(crate) static FORMAT: LazyLock<Vec<BorrowedFormatItem<'_>>> =
+    LazyLock::new(|| format_description::parse("[day]-[month]-[year]").expect("error"));
+pub(crate) static NOW: LazyLock<OffsetDateTime> = LazyLock::new(|| {
+    OffsetDateTime::now_local()
+        .context("Cannot get now")
+        .expect("Error")
+});
+pub(crate) static CURRENT_OFFSET: LazyLock<UtcOffset> = LazyLock::new(|| {
+    UtcOffset::current_local_offset()
+        .context("Could not get offset")
+        .expect("Error")
+});
+pub(crate) static DATE_STRING: LazyLock<String> =
+    LazyLock::new(|| NOW.date().format(&FORMAT).expect("Error"));
 
 #[derive(Debug)]
 pub(crate) enum Save {
@@ -37,6 +57,15 @@ impl Status {
             Status::Rejected => "Rejected".green(),
         }
     }
+
+    pub(crate) fn next(&self) {
+        match self {
+            Status::Todo => Status::Pending,
+            Status::Pending => Status::Rejected,
+            Status::Rejected => Status::Todo,
+            Status::Declined => Status::Todo,
+        };
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -52,23 +81,12 @@ pub(crate) struct Record {
 
 impl Record {
     fn update_date(&mut self) {
-        let format =
-            format_description::parse("[day]-[month]-[year]").expect("Error in format description");
-        let date = OffsetDateTime::now_utc()
-            .date()
-            .format(&format)
-            .expect("error in time");
-        self.last_action_date = date;
+        self.last_action_date = DATE_STRING.clone();
     }
 
     /// toggle stage
     pub(crate) fn next_stage(&mut self) {
-        self.status = match self.status {
-            Status::Todo => Status::Pending,
-            Status::Pending => Status::Rejected,
-            Status::Rejected => Status::Todo,
-            Status::Declined => Status::Todo,
-        };
+        self.status.next();
         self.update_date();
     }
 
@@ -78,27 +96,25 @@ impl Record {
         self.update_date();
     }
 
+    pub(crate) fn is_old(&self) -> bool {
+        let d_primitive_date = Date::parse(&self.last_action_date, &FORMAT)
+            .context("Cannot parse primitive date")
+            .expect("Error");
+        let d_primitive = d_primitive_date
+            .with_hms(0, 0, 0)
+            .context("Could not add time")
+            .expect("Error");
+        let d = d_primitive.assume_offset(*CURRENT_OFFSET);
+        self.status != Status::Todo && *NOW - d >= Duration::weeks(2)
+    }
+
     /// print one entry
-    pub(crate) fn print(
-        &self,
-        index: usize,
-        truncate: bool,
-        current_offset: UtcOffset,
-        now: OffsetDateTime,
-    ) -> anyhow::Result<()> {
-        let format = format_description::parse("[day]-[month]-[year]")
-            .context("time format description error")?;
+    pub(crate) fn print(&self, index: usize, truncate: bool) -> anyhow::Result<()> {
         let mut r = self.additional_info.clone();
         if truncate {
             r.truncate(30);
         }
-        let d_primitive_date =
-            Date::parse(&self.last_action_date, &format).context("Cannot parse primitive date")?;
-        let d_primitive = d_primitive_date
-            .with_hms(0, 0, 0)
-            .context("Could not add time")?;
-        let d = d_primitive.assume_offset(current_offset);
-        if self.status != Status::Todo && now - d >= Duration::weeks(2) {
+        if self.is_old() {
             println!(
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
                 index.dim(),
@@ -122,5 +138,22 @@ impl Record {
             );
         }
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GuiView {
+    Normal,
+    Old,
+    All,
+}
+
+impl GuiView {
+    pub(crate) fn next(&mut self) -> GuiView {
+        match self {
+            GuiView::Normal => GuiView::Old,
+            GuiView::Old => GuiView::All,
+            GuiView::All => GuiView::Normal,
+        }
     }
 }

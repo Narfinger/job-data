@@ -6,8 +6,7 @@ use std::{
     fs::File,
     io::{BufReader, BufWriter},
 };
-use time::{format_description, OffsetDateTime, UtcOffset};
-use types::{Record, Status};
+use types::{Record, Status, DATE_STRING};
 use yansi::Paint;
 
 mod gui;
@@ -77,12 +76,10 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
         "Info".underline()
     );
 
-    let now = OffsetDateTime::now_local().context("Cannot get now")?;
-    let current_offset = UtcOffset::current_local_offset().context("Could not get offset")?;
     for (i, record) in rdr.iter().enumerate() {
         // we want to keep the record numbers the same
         if show_all || record.status == Status::Pending || record.status == Status::Todo {
-            record.print(i, truncate, current_offset, now)?;
+            record.print(i, truncate)?;
         }
     }
     Ok(())
@@ -190,8 +187,6 @@ fn main() -> anyhow::Result<()> {
     } else if let Some(i) = cli.todo {
         change_status(&mut rdr, i, Status::Todo)?;
     } else if let Some(v) = cli.info_change {
-        let format = format_description::parse("[day]-[month]-[year]")?;
-        let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
             println!(
                 "Chainging from {} to {}",
@@ -200,15 +195,13 @@ fn main() -> anyhow::Result<()> {
             );
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
-                rdr.get_mut(i).unwrap().last_action_date = date;
+                rdr.get_mut(i).unwrap().last_action_date = DATE_STRING.clone();
                 write(&rdr)?;
             }
         } else {
             println!("Not a valid integer");
         }
     } else if let Some(v) = cli.stage_change {
-        let format = format_description::parse("[day]-[month]-[year]")?;
-        let date = OffsetDateTime::now_utc().date().format(&format)?;
         if let Ok(i) = v.first().unwrap().parse::<usize>() {
             println!(
                 "Chainging from {} to {}",
@@ -217,7 +210,7 @@ fn main() -> anyhow::Result<()> {
             );
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
-                rdr.get_mut(i).unwrap().last_action_date = date;
+                rdr.get_mut(i).unwrap().last_action_date = DATE_STRING.clone();
                 write(&rdr)?;
             }
         } else {
@@ -226,10 +219,8 @@ fn main() -> anyhow::Result<()> {
     } else if cli.open {
         open::that(PATH).context("Could not open file")?;
     } else if let Some(v) = cli.add {
-        let format = format_description::parse("[day]-[month]-[year]")?;
-        let date = OffsetDateTime::now_utc().date().format(&format)?;
         let r = Record {
-            last_action_date: date,
+            last_action_date: DATE_STRING.clone(),
             name: v.first().unwrap().clone(),
             subname: v.get(1).unwrap().clone(),
             stage: "Pending".to_string(),
