@@ -209,8 +209,9 @@ fn main() -> anyhow::Result<()> {
                 &v.get(1).unwrap(),
             );
             if ask_if_change(&rdr, i) {
-                rdr.get_mut(i).unwrap().stage = v.get(1).unwrap().to_string();
-                rdr.get_mut(i).unwrap().last_action_date = DATE_STRING.clone();
+                rdr.get_mut(i)
+                    .unwrap()
+                    .set_stage(v.get(1).unwrap().to_string());
                 write(&rdr)?;
             }
         } else {

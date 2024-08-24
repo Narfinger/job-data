@@ -96,6 +96,11 @@ impl Record {
         self.update_date();
     }
 
+    pub(crate) fn set_stage(&mut self, stage: String) {
+        self.stage = stage;
+        self.update_date();
+    }
+
     pub(crate) fn is_old(&self) -> bool {
         let d_primitive_date = Date::parse(&self.last_action_date, &FORMAT)
             .context("Cannot parse primitive date")
