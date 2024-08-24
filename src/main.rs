@@ -5,6 +5,8 @@ use std::{
     collections::HashMap,
     fs::File,
     io::{BufReader, BufWriter},
+    path::PathBuf,
+    sync::LazyLock,
 };
 use types::{Record, Status, DATE_STRING};
 use yansi::Paint;
@@ -12,7 +14,10 @@ use yansi::Paint;
 mod gui;
 mod types;
 
-const PATH: &str = "/home/engelzz/Documents/job-applications.csv";
+static PATH: LazyLock<PathBuf> = LazyLock::new(|| {
+    let u = directories::UserDirs::new().expect("Cannot find userdirs");
+    u.document_dir().unwrap().join("job-applications.csv")
+});
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about)]
@@ -110,7 +115,7 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
 
 /// write records to file
 fn write(rdr: &[Record]) -> anyhow::Result<()> {
-    let f = File::create(PATH)?;
+    let f = File::create(PATH.clone())?;
     let br = BufWriter::new(f);
     let mut wtr = csv::Writer::from_writer(br);
     for i in rdr {
@@ -166,7 +171,7 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let mut rdr = {
-        let f = File::open(PATH)?;
+        let f = File::open(PATH.clone())?;
         let br = BufReader::new(f);
         let rdr = csv::Reader::from_reader(br)
             .deserialize()
@@ -218,7 +223,7 @@ fn main() -> anyhow::Result<()> {
             println!("Not a valid integer");
         }
     } else if cli.open {
-        open::that(PATH).context("Could not open file")?;
+        open::that(PATH.clone()).context("Could not open file")?;
     } else if let Some(v) = cli.add {
         let r = Record {
             last_action_date: DATE_STRING.clone(),
