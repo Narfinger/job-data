@@ -5,34 +5,38 @@ use ratatui::{
     Frame,
 };
 
-use crate::types::{GuiState, Record};
+use crate::types::{GuiState, Record, Window};
 
-pub(crate) fn draw_text_input(frame: &mut Frame, state: &GuiState) {
+pub(crate) fn draw(frame: &mut Frame, txt: &str) {
     let layout = Layout::vertical([Constraint::Percentage(50)])
         .flex(Flex::Center)
         .vertical_margin(4)
         .split(frame.area());
-    let text_input = Paragraph::new(state.stage_text.clone().unwrap())
-        .block(Block::bordered().title("Stage Info"));
+    let text_input = Paragraph::new(txt.to_owned()).block(Block::bordered().title("Stage Info"));
     frame.render_widget(text_input, layout[0]);
 }
 
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState, rdr: &mut [Record]) {
     match key.code {
         KeyCode::Esc => {
-            state.stage_text.take();
+            state.window = Window::Table;
         }
         KeyCode::Enter => {
-            let txt = state.stage_text.take();
-            rdr.get_mut(rdr.len() - 1 - state.table_state.selected().unwrap())
-                .unwrap()
-                .set_stage(txt.unwrap());
+            if let Window::StageWindow(ref txt) = state.window {
+                rdr.get_mut(rdr.len() - 1 - state.table_state.selected().unwrap())
+                    .unwrap()
+                    .set_stage(txt.clone());
+            }
         }
         KeyCode::Char(char) => {
-            state.stage_text.as_mut().unwrap().push(char);
+            if let Window::StageWindow(ref mut txt) = state.window {
+                txt.push(char);
+            }
         }
         KeyCode::Backspace => {
-            state.stage_text.as_mut().unwrap().pop();
+            if let Window::StageWindow(ref mut txt) = state.window {
+                txt.pop();
+            }
         }
         _ => {}
     };

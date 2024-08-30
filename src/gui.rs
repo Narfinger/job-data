@@ -7,11 +7,11 @@ use ratatui::{
     prelude::*,
     widgets::TableState,
 };
-use std::{collections::HashSet, io::stdout, ops::ControlFlow};
+use std::{collections::HashSet, io::stdout};
 
 use crate::{
     status_window, table_window,
-    types::{GuiState, GuiView, Record},
+    types::{GuiState, GuiView, Record, Window},
 };
 
 pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
@@ -23,28 +23,30 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
     let mut state = GuiState {
         table_state: TableState::default().with_selected(Some(0)),
         view: GuiView::Normal,
-        stage_text: None,
+        window: Window::Table,
         changed_this_exection: HashSet::new(),
     };
 
     loop {
         terminal.draw(|frame| {
-            if state.stage_text.is_some() {
-                status_window::draw_text_input(frame, &state);
-            } else {
-                table_window::draw(frame, rdr, &mut state)
-            }
+            match &state.window {
+                Window::Table => table_window::draw(frame, rdr, &mut state),
+                Window::StageWindow(txt) => status_window::draw(frame, txt),
+            };
         })?;
         if event::poll(std::time::Duration::from_millis(16))? {
             if let event::Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
-                    if state.stage_text.is_some() {
-                        status_window::handle_input(key, &mut state, rdr);
-                    } else if let ControlFlow::Break(_) =
-                        table_window::handle_input(key, &mut state, rdr)
-                    {
-                        break;
-                    }
+                    match state.window {
+                        Window::Table => {
+                            if table_window::handle_input(key, &mut state, rdr).is_break() {
+                                break;
+                            }
+                        }
+                        Window::StageWindow(_) => {
+                            status_window::handle_input(key, &mut state, rdr);
+                        }
+                    };
                 }
             }
         }

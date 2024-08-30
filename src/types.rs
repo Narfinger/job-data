@@ -162,8 +162,13 @@ impl GuiView {
 pub(crate) struct GuiState {
     pub(crate) table_state: TableState,
     pub(crate) view: GuiView,
-    /// the stage text currently modified
-    pub(crate) stage_text: Option<String>,
+    pub(crate) window: Window,
     /// record the index of all things we changed today so that we still show them
     pub(crate) changed_this_exection: HashSet<usize>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum Window {
+    Table,
+    StageWindow(String),
 }

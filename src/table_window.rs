@@ -5,7 +5,7 @@ use ratatui::{
 };
 use std::{collections::HashSet, ops::ControlFlow};
 
-use crate::types::{GuiState, GuiView, Record, Status};
+use crate::types::{GuiState, GuiView, Record, Status, Window};
 
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
@@ -117,7 +117,7 @@ pub(crate) fn handle_input(
                 .selected()
                 .and_then(|i| rdr.get(rdr.len() - 1 - i))
                 .map(|r: &Record| r.stage.clone());
-            state.stage_text = Some(txt.clone().unwrap());
+            state.window = Window::StageWindow(txt.unwrap());
         }
         _ => {}
     }
