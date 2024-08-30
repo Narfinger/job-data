@@ -24,12 +24,6 @@ pub(crate) static CURRENT_OFFSET: LazyLock<UtcOffset> = LazyLock::new(|| {
 pub(crate) static DATE_STRING: LazyLock<String> =
     LazyLock::new(|| NOW.date().format(&FORMAT).expect("Error"));
 
-#[derive(Debug)]
-pub(crate) enum Save {
-    Save,
-    DoNotSave,
-}
-
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub(crate) enum Status {
     Todo,

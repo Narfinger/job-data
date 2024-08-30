@@ -1,43 +1,18 @@
-use layout::Flex;
 use ratatui::{
     crossterm::{
-        event::{self, KeyCode, KeyEventKind},
+        event::{self, KeyEventKind},
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
     prelude::*,
-    widgets::{Block, Paragraph, Row, Table, TableState},
+    widgets::TableState,
 };
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
     status_window, table_window,
-    types::{GuiState, GuiView, Record, Status},
+    types::{GuiState, GuiView, Record},
 };
-
-fn draw_record(index: usize, r: &Record) -> Row<'_> {
-    let color = match r.status {
-        Status::Todo => Color::Red,
-        Status::Pending => {
-            if r.is_old() {
-                Color::DarkGray
-            } else {
-                Color::Yellow
-            }
-        }
-        Status::Rejected => Color::Green,
-        Status::Declined => Color::Green,
-    };
-    Row::new(vec![
-        index.to_string(),
-        r.status.to_string(),
-        r.last_action_date.to_owned(),
-        r.name.to_owned(),
-        r.subname.to_owned(),
-        r.stage.to_owned(),
-    ])
-    .style(Style::default().fg(color))
-}
 
 pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<()> {
     stdout().execute(EnterAlternateScreen)?;

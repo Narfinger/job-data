@@ -1,12 +1,7 @@
-use layout::Flex;
 use ratatui::{
-    crossterm::{
-        event::{self, KeyCode, KeyEventKind},
-        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-        ExecutableCommand,
-    },
+    crossterm::event::{self, KeyCode},
     prelude::*,
-    widgets::{Block, Paragraph, Row, Table, TableState},
+    widgets::{Row, Table},
 };
 use std::{collections::HashSet, ops::ControlFlow};
 
