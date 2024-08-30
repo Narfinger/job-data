@@ -1,7 +1,7 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
     prelude::*,
-    widgets::{Row, Table},
+    widgets::{Block, Row, Table},
 };
 use std::ops::ControlFlow;
 
@@ -31,7 +31,7 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     .style(Style::default().fg(color))
 }
 
-pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
+pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
     let rows = state
         .rdr
         .iter()
@@ -55,9 +55,10 @@ pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
                 .style(Style::new().bold()),
         )
         .highlight_style(Style::new().reversed())
-        .highlight_symbol(">>");
+        .highlight_symbol(">>")
+        .block(Block::bordered());
 
-    frame.render_stateful_widget(table, frame.area(), &mut state.table_state);
+    frame.render_stateful_widget(table, r, &mut state.table_state);
 }
 
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> ControlFlow<Save> {

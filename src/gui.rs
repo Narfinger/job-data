@@ -10,7 +10,7 @@ use ratatui::{
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
-    help_window, status_window, table_window,
+    help_window, status_window, statusbar, table_window,
     types::{GuiState, GuiView, Record, Save, Window},
 };
 
@@ -34,10 +34,16 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
     let save;
     loop {
         terminal.draw(|frame| {
+            let layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![Constraint::Percentage(2), Constraint::Percentage(98)])
+                .split(frame.area());
+
+            statusbar::draw(frame, layout[0], &mut state);
             match &state.window {
-                Window::Table => table_window::draw(frame, &mut state),
-                Window::StageEdit(_, _) => status_window::draw(frame, &mut state),
-                Window::Help => help_window::draw(frame, &mut state),
+                Window::Table => table_window::draw(frame, layout[1], &mut state),
+                Window::StageEdit(_, _) => status_window::draw(frame, layout[1], &mut state),
+                Window::Help => help_window::draw(frame, layout[1], &mut state),
             };
         })?;
         if event::poll(std::time::Duration::from_millis(16))? {

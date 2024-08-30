@@ -14,6 +14,7 @@ use yansi::Paint;
 mod gui;
 mod help_window;
 mod status_window;
+mod statusbar;
 mod table_window;
 mod types;
 
@@ -105,11 +106,11 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
         let key_print = key.print();
         let percentage: f64 = (*val as f64) / (rdr.len() as f64);
         print!(
-            "{}: {}/{} ({:.2}%)| ",
+            "{}: {}/{} ({:.1}%)| ",
             key_print,
             val,
             rdr.len(),
-            percentage
+            percentage * 100_f64
         );
     }
     println!("\n----------------------------------------------------------------");

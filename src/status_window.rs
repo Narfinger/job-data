@@ -18,9 +18,9 @@ fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
     area
 }
 
-pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
+pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
     // first draw the table
-    table_window::draw(frame, state);
+    table_window::draw(frame, r, state);
 
     if let Window::StageEdit(ref txt, _) = state.window {
         let area = center(
