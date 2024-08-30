@@ -1,6 +1,7 @@
-use std::sync::LazyLock;
+use std::{collections::HashSet, sync::LazyLock};
 
 use anyhow::Context;
+use ratatui::widgets::TableState;
 use serde::{Deserialize, Serialize};
 use time::{
     format_description::{self, BorrowedFormatItem},
@@ -162,4 +163,13 @@ impl GuiView {
             GuiView::All => GuiView::Normal,
         }
     }
+}
+
+pub(crate) struct GuiState {
+    pub(crate) table_state: TableState,
+    pub(crate) view: GuiView,
+    /// the stage text currently modified
+    pub(crate) stage_text: Option<String>,
+    /// record the index of all things we changed today so that we still show them
+    pub(crate) changed_this_exection: HashSet<usize>,
 }

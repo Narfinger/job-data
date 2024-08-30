@@ -12,6 +12,8 @@ use types::{Record, Status, DATE_STRING};
 use yansi::Paint;
 
 mod gui;
+mod status_window;
+mod table_window;
 mod types;
 
 static PATH: LazyLock<PathBuf> = LazyLock::new(|| {
@@ -253,13 +255,19 @@ fn main() -> anyhow::Result<()> {
         }
         return Ok(());
     } else if cli.tui {
-        match gui::run(&mut rdr)? {
-            types::Save::Save => {
-                println!("We are saving");
-                write(&rdr)?
+        gui::run(&mut rdr)?;
+        match Confirm::new(&format!("Do you want to change"))
+            .with_default(false)
+            .prompt()
+        {
+            Ok(true) => {
+                println!("Writing");
+                write(&rdr)?;
             }
-            types::Save::DoNotSave => println!("We did not save!"),
-        };
+            _ => {
+                println!("We did not save");
+            }
+        }
         return Ok(());
     }
 
