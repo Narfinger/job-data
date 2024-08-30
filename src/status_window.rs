@@ -1,40 +1,60 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::{Constraint, Flex, Layout},
-    widgets::{Block, Paragraph},
+    layout::{Constraint, Flex, Layout, Rect},
+    widgets::{Block, Clear, Paragraph},
     Frame,
 };
 
-use crate::types::{GuiState, Record, Window};
+use crate::{
+    table_window,
+    types::{GuiState, Window},
+};
 
-pub(crate) fn draw(frame: &mut Frame, txt: &str) {
-    let layout = Layout::vertical([Constraint::Percentage(50)])
+fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+    let [area] = Layout::horizontal([horizontal])
         .flex(Flex::Center)
-        .vertical_margin(4)
-        .split(frame.area());
-    let text_input = Paragraph::new(txt.to_owned()).block(Block::bordered().title("Stage Info"));
-    frame.render_widget(text_input, layout[0]);
+        .areas(area);
+    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
+    area
 }
 
-pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState, rdr: &mut [Record]) {
+pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
+    // first draw the table
+    table_window::draw(frame, state);
+
+    if let Window::StageEdit(ref txt) = state.window {
+        let area = center(
+            frame.area(),
+            Constraint::Percentage(20),
+            Constraint::Length(3), // top and bottom border + content
+        );
+        let text_input =
+            Paragraph::new(txt.to_owned()).block(Block::bordered().title("Stage Info"));
+        frame.render_widget(Clear, area);
+        frame.render_widget(text_input, area);
+    }
+}
+
+pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
+    let rdr = &mut state.rdr;
     match key.code {
         KeyCode::Esc => {
             state.window = Window::Table;
         }
         KeyCode::Enter => {
-            if let Window::StageWindow(ref txt) = state.window {
+            if let Window::StageEdit(ref txt) = state.window {
                 rdr.get_mut(rdr.len() - 1 - state.table_state.selected().unwrap())
                     .unwrap()
                     .set_stage(txt.clone());
             }
         }
         KeyCode::Char(char) => {
-            if let Window::StageWindow(ref mut txt) = state.window {
+            if let Window::StageEdit(ref mut txt) = state.window {
                 txt.push(char);
             }
         }
         KeyCode::Backspace => {
-            if let Window::StageWindow(ref mut txt) = state.window {
+            if let Window::StageEdit(ref mut txt) = state.window {
                 txt.pop();
             }
         }

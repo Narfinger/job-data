@@ -159,7 +159,8 @@ impl GuiView {
     }
 }
 
-pub(crate) struct GuiState {
+pub(crate) struct GuiState<'a> {
+    pub(crate) rdr: &'a mut [Record],
     pub(crate) table_state: TableState,
     pub(crate) view: GuiView,
     pub(crate) window: Window,
@@ -170,5 +171,11 @@ pub(crate) struct GuiState {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Window {
     Table,
-    StageWindow(String),
+    StageEdit(String),
+    Help,
+}
+
+pub(crate) enum Save {
+    Save,
+    DoNotSave,
 }

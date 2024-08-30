@@ -5,7 +5,7 @@ use ratatui::{
 };
 use std::{collections::HashSet, ops::ControlFlow};
 
-use crate::types::{GuiState, GuiView, Record, Status, Window};
+use crate::types::{GuiState, GuiView, Record, Save, Status, Window};
 
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
@@ -47,8 +47,9 @@ fn gui_filter(
         }
 }
 
-pub(crate) fn draw(frame: &mut Frame, rdr: &mut [Record], state: &mut GuiState) {
-    let rows = rdr
+pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
+    let rows = state
+        .rdr
         .iter()
         .rev()
         .enumerate()
@@ -76,17 +77,14 @@ pub(crate) fn draw(frame: &mut Frame, rdr: &mut [Record], state: &mut GuiState) 
     frame.render_stateful_widget(table, frame.area(), &mut state.table_state);
 }
 
-pub(crate) fn handle_input(
-    key: event::KeyEvent,
-    state: &mut GuiState,
-    rdr: &mut [Record],
-) -> ControlFlow<()> {
+pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> ControlFlow<Save> {
+    let rdr = &mut state.rdr;
     match key.code {
         KeyCode::Esc => {
-            return ControlFlow::Break(());
+            return ControlFlow::Break(Save::DoNotSave);
         }
         KeyCode::Char('q') => {
-            return ControlFlow::Break(());
+            return ControlFlow::Break(Save::Save);
         }
         KeyCode::Up => {
             state.table_state.select_previous();
@@ -108,7 +106,7 @@ pub(crate) fn handle_input(
                 }
             }
         }
-        KeyCode::Char('a') => {
+        KeyCode::Char('v') => {
             state.view = state.view.next();
         }
         KeyCode::Char('s') => {
@@ -117,7 +115,10 @@ pub(crate) fn handle_input(
                 .selected()
                 .and_then(|i| rdr.get(rdr.len() - 1 - i))
                 .map(|r: &Record| r.stage.clone());
-            state.window = Window::StageWindow(txt.unwrap());
+            state.window = Window::StageEdit(txt.unwrap());
+        }
+        KeyCode::Char('?') => {
+            state.window = Window::Help;
         }
         _ => {}
     }

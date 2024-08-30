@@ -8,10 +8,11 @@ use std::{
     path::PathBuf,
     sync::LazyLock,
 };
-use types::{Record, Status, DATE_STRING};
+use types::{Record, Save, Status, DATE_STRING};
 use yansi::Paint;
 
 mod gui;
+mod help_window;
 mod status_window;
 mod table_window;
 mod types;
@@ -255,16 +256,12 @@ fn main() -> anyhow::Result<()> {
         }
         return Ok(());
     } else if cli.tui {
-        gui::run(&mut rdr)?;
-        match Confirm::new(&format!("Do you want to change"))
-            .with_default(false)
-            .prompt()
-        {
-            Ok(true) => {
+        match gui::run(&mut rdr)? {
+            Save::Save => {
                 println!("Writing");
                 write(&rdr)?;
             }
-            _ => {
+            Save::DoNotSave => {
                 println!("We did not save");
             }
         }
