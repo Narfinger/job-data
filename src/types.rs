@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::LazyLock};
+use std::{cmp::Ordering, collections::HashSet, sync::LazyLock};
 
 use anyhow::Context;
 use ratatui::widgets::TableState;
@@ -64,7 +64,7 @@ impl Status {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub(crate) struct Record {
     pub(crate) last_action_date: String,
@@ -75,6 +75,23 @@ pub(crate) struct Record {
     pub(crate) status: Status,
 }
 
+impl PartialOrd for Record {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Record {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.status == Status::Todo && other.status != Status::Todo {
+            Ordering::Less
+        } else if self.status != Status::Todo && other.status == Status::Todo {
+            Ordering::Greater
+        } else {
+            self.last_action_date.cmp(&other.last_action_date)
+        }
+    }
+}
 impl Record {
     fn update_date(&mut self) {
         self.last_action_date = DATE_STRING.clone();
@@ -168,10 +185,34 @@ pub(crate) struct GuiState<'a> {
     pub(crate) changed_this_exection: HashSet<usize>,
 }
 
+impl<'a> GuiState<'a> {
+    /// the filter function of which ones to show
+    pub(crate) fn filter(&self, index: &usize, r: &Record) -> bool {
+        r.status == Status::Todo
+            || self.changed_this_exection.contains(index)
+            || match self.view {
+                GuiView::Normal => r.status == Status::Pending && !r.is_old(),
+                GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
+                GuiView::All => true,
+            }
+    }
+
+    pub(crate) fn get_real_index(&self) -> usize {
+        let index = self.table_state.selected().unwrap();
+        self.rdr
+            .iter()
+            .enumerate()
+            .filter(|(index, r)| self.filter(index, r))
+            .nth(index)
+            .map(|(i, _)| i)
+            .unwrap()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Window {
     Table,
-    StageEdit(String),
+    StageEdit(String, usize),
     Help,
 }
 

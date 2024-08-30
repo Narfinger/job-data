@@ -15,6 +15,9 @@ use crate::{
 };
 
 pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
+    rdr.sort_unstable();
+    //rdr.reverse();
+
     stdout().execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
@@ -33,7 +36,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
         terminal.draw(|frame| {
             match &state.window {
                 Window::Table => table_window::draw(frame, &mut state),
-                Window::StageEdit(_) => status_window::draw(frame, &mut state),
+                Window::StageEdit(_, _) => status_window::draw(frame, &mut state),
                 Window::Help => help_window::draw(frame, &mut state),
             };
         })?;
@@ -49,7 +52,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                                 break;
                             }
                         }
-                        Window::StageEdit(_) => {
+                        Window::StageEdit(_, _) => {
                             status_window::handle_input(key, &mut state);
                         }
                         Window::Help => help_window::handle_input(key, &mut state),

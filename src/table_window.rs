@@ -3,9 +3,9 @@ use ratatui::{
     prelude::*,
     widgets::{Row, Table},
 };
-use std::{collections::HashSet, ops::ControlFlow};
+use std::ops::ControlFlow;
 
-use crate::types::{GuiState, GuiView, Record, Save, Status, Window};
+use crate::types::{GuiState, Record, Save, Status, Window};
 
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
@@ -31,29 +31,12 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     .style(Style::default().fg(color))
 }
 
-/// the filter function of which ones to show
-fn gui_filter(
-    index: &usize,
-    r: &Record,
-    view: &GuiView,
-    changed_this_execution: &HashSet<usize>,
-) -> bool {
-    r.status == Status::Todo
-        || changed_this_execution.contains(index)
-        || match view {
-            GuiView::Normal => r.status == Status::Pending && !r.is_old(),
-            GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
-            GuiView::All => true,
-        }
-}
-
 pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
     let rows = state
         .rdr
         .iter()
-        .rev()
         .enumerate()
-        .filter(|(index, r)| gui_filter(index, r, &state.view, &state.changed_this_exection))
+        .filter(|(index, r)| state.filter(index, r))
         .map(|(index, r)| draw_record(index, r));
 
     // Columns widths are constrained in the same way as Layout...
@@ -78,7 +61,6 @@ pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
 }
 
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> ControlFlow<Save> {
-    let rdr = &mut state.rdr;
     match key.code {
         KeyCode::Esc => {
             return ControlFlow::Break(Save::DoNotSave);
@@ -99,23 +81,21 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
             state.table_state.select_last();
         }
         KeyCode::Enter => {
-            if let Some(index) = state.table_state.selected() {
-                if let Some(record) = rdr.get_mut(rdr.len() - 1 - index) {
-                    record.next_stage();
-                    state.changed_this_exection.insert(index);
-                }
+            let real_index = state.get_real_index();
+            if let Some(record) = state.rdr.get_mut(real_index) {
+                record.next_stage();
+                state.changed_this_exection.insert(real_index);
             }
         }
         KeyCode::Char('v') => {
             state.view = state.view.next();
         }
         KeyCode::Char('s') => {
-            let txt = state
-                .table_state
-                .selected()
-                .and_then(|i| rdr.get(rdr.len() - 1 - i))
-                .map(|r: &Record| r.stage.clone());
-            state.window = Window::StageEdit(txt.unwrap());
+            let real_index = state.get_real_index();
+            // yes, the state is on the table index not the real index
+            state.changed_this_exection.insert(real_index);
+            let txt = state.rdr.get(real_index).unwrap().stage.clone();
+            state.window = Window::StageEdit(txt, real_index);
         }
         KeyCode::Char('?') => {
             state.window = Window::Help;

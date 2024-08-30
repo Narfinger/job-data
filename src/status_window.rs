@@ -22,7 +22,7 @@ pub(crate) fn draw(frame: &mut Frame, state: &mut GuiState) {
     // first draw the table
     table_window::draw(frame, state);
 
-    if let Window::StageEdit(ref txt) = state.window {
+    if let Window::StageEdit(ref txt, _) = state.window {
         let area = center(
             frame.area(),
             Constraint::Percentage(20),
@@ -42,19 +42,18 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             state.window = Window::Table;
         }
         KeyCode::Enter => {
-            if let Window::StageEdit(ref txt) = state.window {
-                rdr.get_mut(rdr.len() - 1 - state.table_state.selected().unwrap())
-                    .unwrap()
-                    .set_stage(txt.clone());
+            if let Window::StageEdit(ref txt, real_index) = state.window {
+                rdr.get_mut(real_index).unwrap().set_stage(txt.clone());
             }
+            state.window = Window::Table;
         }
         KeyCode::Char(char) => {
-            if let Window::StageEdit(ref mut txt) = state.window {
+            if let Window::StageEdit(ref mut txt, _) = state.window {
                 txt.push(char);
             }
         }
         KeyCode::Backspace => {
-            if let Window::StageEdit(ref mut txt) = state.window {
+            if let Window::StageEdit(ref mut txt, _) = state.window {
                 txt.pop();
             }
         }
