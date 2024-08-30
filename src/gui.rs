@@ -8,14 +8,17 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Paragraph, Row, Table, TableState},
 };
-use std::{io::stdout, ops::ControlFlow};
+use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::types::{GuiView, Record, Save, Status};
 
 struct GuiState {
     table_state: TableState,
     view: GuiView,
+    /// the stage text currently modified
     stage_text: Option<String>,
+    /// record the index of all things we changed today so that we still show them
+    changed_this_exection: HashSet<usize>,
 }
 
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
@@ -42,8 +45,15 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     .style(Style::default().fg(color))
 }
 
-fn gui_filter(r: &Record, view: &GuiView) -> bool {
+/// the filter function of which ones to show
+fn gui_filter(
+    index: &usize,
+    r: &Record,
+    view: &GuiView,
+    changed_this_execution: &HashSet<usize>,
+) -> bool {
     r.status == Status::Todo
+        || changed_this_execution.contains(index)
         || match view {
             GuiView::Normal => r.status == Status::Pending && !r.is_old(),
             GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
@@ -65,8 +75,8 @@ fn draw_table(frame: &mut Frame, rdr: &mut [Record], state: &mut GuiState) {
     let rows = rdr
         .iter()
         .rev()
-        .filter(|r| gui_filter(r, &state.view))
         .enumerate()
+        .filter(|(index, r)| gui_filter(index, r, &state.view, &state.changed_this_exection))
         .map(|(index, r)| draw_record(index, r));
 
     // Columns widths are constrained in the same way as Layout...
@@ -101,6 +111,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
         table_state: TableState::default().with_selected(Some(0)),
         view: GuiView::Normal,
         stage_text: None,
+        changed_this_exection: HashSet::new(),
     };
 
     loop {
@@ -178,12 +189,11 @@ fn handle_table_input(
             state.table_state.select_last();
         }
         KeyCode::Enter => {
-            if let Some(record) = state
-                .table_state
-                .selected()
-                .and_then(|i| rdr.get_mut(rdr.len() - 1 - i))
-            {
-                record.next_stage();
+            if let Some(index) = state.table_state.selected() {
+                if let Some(record) = rdr.get_mut(rdr.len() - 1 - index) {
+                    record.next_stage();
+                    state.changed_this_exection.insert(index);
+                }
             }
         }
         KeyCode::Char('a') => {
@@ -195,7 +205,7 @@ fn handle_table_input(
                 .selected()
                 .and_then(|i| rdr.get(rdr.len() - 1 - i))
                 .map(|r: &Record| r.stage.clone());
-            state.stage_text = Some(txt.unwrap());
+            state.stage_text = Some(txt.clone().unwrap());
         }
         _ => {}
     }

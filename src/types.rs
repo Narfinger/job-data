@@ -58,13 +58,14 @@ impl Status {
         }
     }
 
-    pub(crate) fn next(&self) {
+    #[must_use]
+    pub(crate) fn next(&self) -> Status {
         match self {
             Status::Todo => Status::Pending,
             Status::Pending => Status::Rejected,
             Status::Rejected => Status::Todo,
             Status::Declined => Status::Todo,
-        };
+        }
     }
 }
 
@@ -86,7 +87,7 @@ impl Record {
 
     /// toggle stage
     pub(crate) fn next_stage(&mut self) {
-        self.status.next();
+        self.status = self.status.next();
         self.update_date();
     }
 
