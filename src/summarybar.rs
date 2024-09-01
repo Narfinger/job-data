@@ -56,7 +56,7 @@ fn stats<'a>(state: &'a GuiState) -> Line<'a> {
     Line::from(spans)
 }
 
-pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
+pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     let widget = stats(state);
     frame.render_widget(widget, r);
 }

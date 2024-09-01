@@ -29,10 +29,7 @@ fn styled_text<'a>(key: &'a str, text: &'a str) -> Line<'a> {
     ])
 }
 
-pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
-    // first draw the table
-    table_window::draw(frame, r, state);
-
+pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     let area = center(
         frame.area(),
         Constraint::Percentage(30),

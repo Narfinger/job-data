@@ -10,7 +10,7 @@ use ratatui::{
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
-    help_window, status_edit_window, statusbar, table_window,
+    help_window, searchbar, status_edit_window, summarybar, table_window,
     types::{GuiState, GuiView, Record, Save, Window},
 };
 
@@ -36,14 +36,20 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
         terminal.draw(|frame| {
             let layout = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints(vec![Constraint::Percentage(2), Constraint::Percentage(98)])
+                .constraints(vec![
+                    Constraint::Percentage(2),
+                    Constraint::Percentage(98),
+                    Constraint::Percentage(5),
+                ])
                 .split(frame.area());
 
-            statusbar::draw(frame, layout[0], &mut state);
+            summarybar::draw(frame, layout[0], &state);
+            table_window::draw(frame, layout[1], &mut state);
+            searchbar::draw(frame, layout[2], &state);
             match &state.window {
-                Window::Table => table_window::draw(frame, layout[1], &mut state),
-                Window::StageEdit(_, _) => status_edit_window::draw(frame, layout[1], &mut state),
-                Window::Help => help_window::draw(frame, layout[1], &mut state),
+                Window::Table => {}
+                Window::StageEdit(_, _) => status_edit_window::draw(frame, layout[1], &state),
+                Window::Help => help_window::draw(frame, layout[1], &state),
             };
         })?;
         if event::poll(std::time::Duration::from_millis(16))? {

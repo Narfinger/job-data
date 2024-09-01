@@ -13,8 +13,9 @@ use yansi::Paint;
 
 mod gui;
 mod help_window;
+mod searchbar;
 mod status_edit_window;
-mod statusbar;
+mod summarybar;
 mod table_window;
 mod types;
 
