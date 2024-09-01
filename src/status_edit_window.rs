@@ -1,6 +1,6 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::{Constraint, Flex, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Position, Rect},
     widgets::{Block, Clear, Paragraph},
     Frame,
 };
@@ -32,6 +32,11 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
             Paragraph::new(txt.to_owned()).block(Block::bordered().title("Stage Info"));
         frame.render_widget(Clear, area);
         frame.render_widget(text_input, area);
+        frame.set_cursor_position(Position::new(
+            area.x + txt.len() as u16 + 1,
+            // Move one line down, from the border to the input line
+            area.y + 1,
+        ))
     }
 }
 

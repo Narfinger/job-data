@@ -13,7 +13,7 @@ use yansi::Paint;
 
 mod gui;
 mod help_window;
-mod status_window;
+mod status_edit_window;
 mod statusbar;
 mod table_window;
 mod types;

@@ -10,7 +10,7 @@ use ratatui::{
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
-    help_window, status_window, statusbar, table_window,
+    help_window, status_edit_window, statusbar, table_window,
     types::{GuiState, GuiView, Record, Save, Window},
 };
 
@@ -42,7 +42,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
             statusbar::draw(frame, layout[0], &mut state);
             match &state.window {
                 Window::Table => table_window::draw(frame, layout[1], &mut state),
-                Window::StageEdit(_, _) => status_window::draw(frame, layout[1], &mut state),
+                Window::StageEdit(_, _) => status_edit_window::draw(frame, layout[1], &mut state),
                 Window::Help => help_window::draw(frame, layout[1], &mut state),
             };
         })?;
@@ -59,7 +59,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                             }
                         }
                         Window::StageEdit(_, _) => {
-                            status_window::handle_input(key, &mut state);
+                            status_edit_window::handle_input(key, &mut state);
                         }
                         Window::Help => help_window::handle_input(key, &mut state),
                     };
