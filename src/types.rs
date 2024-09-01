@@ -1,7 +1,10 @@
 use std::{cmp::Ordering, collections::HashSet, sync::LazyLock};
 
 use anyhow::Context;
-use ratatui::widgets::TableState;
+use ratatui::{
+    layout::{Constraint, Flex, Layout, Rect},
+    widgets::TableState,
+};
 use serde::{Deserialize, Serialize};
 use time::{
     format_description::{self, BorrowedFormatItem},
@@ -9,29 +12,40 @@ use time::{
 };
 use yansi::{Paint, Painted};
 
+/// Time format
 pub(crate) static FORMAT: LazyLock<Vec<BorrowedFormatItem<'_>>> =
     LazyLock::new(|| format_description::parse("[day]-[month]-[year]").expect("error"));
+
+/// The local time
 pub(crate) static NOW: LazyLock<OffsetDateTime> = LazyLock::new(|| {
     OffsetDateTime::now_local()
         .context("Cannot get now")
         .expect("Error")
 });
+/// The current offset
 pub(crate) static CURRENT_OFFSET: LazyLock<UtcOffset> = LazyLock::new(|| {
     UtcOffset::current_local_offset()
         .context("Could not get offset")
         .expect("Error")
 });
+/// the date string of now
 pub(crate) static DATE_STRING: LazyLock<String> =
     LazyLock::new(|| NOW.date().format(&FORMAT).expect("Error"));
 
+/// Status of a job application
 #[derive(Clone, Debug, Deserialize, Hash, Serialize, PartialEq, Eq)]
 pub(crate) enum Status {
+    /// we need to do something
     Todo,
+    /// we are waiting for an update
     Pending,
+    /// we got rejected
     Rejected,
+    /// we declined the offer
     Declined,
 }
 
+/// simple display function for status on cmd
 impl std::fmt::Display for Status {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -44,6 +58,7 @@ impl std::fmt::Display for Status {
 }
 
 impl Status {
+    /// display string for status
     pub(crate) fn print(&self) -> Painted<&str> {
         match self {
             Status::Todo => "TODO".red(),
@@ -53,6 +68,7 @@ impl Status {
         }
     }
 
+    /// function to toggle status in order, returning the new status
     #[must_use]
     pub(crate) fn next(&self) -> Status {
         match self {
@@ -64,14 +80,30 @@ impl Status {
     }
 }
 
+/// Find the center rectangle
+pub(crate) fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
+    let [area] = Layout::horizontal([horizontal])
+        .flex(Flex::Center)
+        .areas(area);
+    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
+    area
+}
+
+/// A record of a job application
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub(crate) struct Record {
+    /// the last time any action happened to this job
     pub(crate) last_action_date: String,
+    /// the name of the company
     pub(crate) name: String,
+    /// the job name
     pub(crate) subname: String,
+    /// at what stage are we, i.e., first interview, second and so on
     pub(crate) stage: String,
+    /// some additional information we want to store
     pub(crate) additional_info: String,
+    /// the status of the job
     pub(crate) status: Status,
 }
 
@@ -92,7 +124,9 @@ impl Ord for Record {
         }
     }
 }
+
 impl Record {
+    /// update the last action date
     fn update_date(&mut self) {
         self.last_action_date = DATE_STRING.clone();
     }
@@ -109,11 +143,13 @@ impl Record {
         self.update_date();
     }
 
+    /// sets the stage of the job
     pub(crate) fn set_stage(&mut self, stage: String) {
         self.stage = stage;
         self.update_date();
     }
 
+    /// test if the job is old, i.e., 2 weeks after last action date
     pub(crate) fn is_old(&self) -> bool {
         let d_primitive_date = Date::parse(&self.last_action_date, &FORMAT)
             .context("Cannot parse primitive date")
@@ -159,15 +195,19 @@ impl Record {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 /// Which part of jobs we show
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum GuiView {
+    /// Show only non-old Pending and Todo jobs
     Normal,
+    /// Show only Pending jobs
     Old,
+    /// Show all jobs
     All,
 }
 
 impl GuiView {
+    /// toggle the guiview
     pub(crate) fn next(&mut self) -> GuiView {
         match self {
             GuiView::Normal => GuiView::Old,
@@ -177,6 +217,7 @@ impl GuiView {
     }
 }
 
+/// state of the tui
 pub(crate) struct GuiState<'a> {
     /// The records
     pub(crate) rdr: &'a mut [Record],
@@ -185,7 +226,7 @@ pub(crate) struct GuiState<'a> {
     /// Which parts of job we show
     pub(crate) view: GuiView,
     /// which window we have in focus
-    pub(crate) window: Window,
+    pub(crate) focus: WindowFocus,
     /// record the index of all things we changed today so that we still show them
     pub(crate) changed_this_exection: HashSet<usize>,
     /// Are we searching something
@@ -210,6 +251,7 @@ impl<'a> GuiState<'a> {
         }
     }
 
+    /// get the index in the record vector from the selection of the table
     pub(crate) fn get_real_index(&self) -> usize {
         let index = self.table_state.selected().unwrap();
         self.rdr
@@ -223,14 +265,21 @@ impl<'a> GuiState<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) enum Window {
+pub(crate) enum WindowFocus {
+    /// The table
     Table,
+    /// The edit stage popup
     StageEdit(String, usize),
+    /// The help window
     Help,
+    /// The search lower bar
     Search,
 }
 
+/// Should we save the records to disk or not
 pub(crate) enum Save {
+    /// Save the records to disk
     Save,
+    /// Do not save the records to disk
     DoNotSave,
 }

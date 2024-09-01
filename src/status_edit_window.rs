@@ -1,22 +1,15 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::{Constraint, Flex, Layout, Position, Rect},
+    layout::{Constraint, Position, Rect},
     widgets::{Block, Clear, Paragraph},
     Frame,
 };
 
-use crate::types::{GuiState, Window};
+use crate::types::{center, WindowFocus, GuiState};
 
-fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
-    let [area] = Layout::horizontal([horizontal])
-        .flex(Flex::Center)
-        .areas(area);
-    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
-    area
-}
-
-pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
-    if let Window::StageEdit(ref txt, _) = state.window {
+/// draw the status edit frame
+pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
+    if let WindowFocus::StageEdit(ref txt, _) = state.focus {
         let area = center(
             frame.area(),
             Constraint::Percentage(20),
@@ -34,25 +27,26 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     }
 }
 
+/// handle inputs for status edit frame
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
     let rdr = &mut state.rdr;
     match key.code {
         KeyCode::Esc => {
-            state.window = Window::Table;
+            state.focus = WindowFocus::Table;
         }
         KeyCode::Enter => {
-            if let Window::StageEdit(ref txt, real_index) = state.window {
+            if let WindowFocus::StageEdit(ref txt, real_index) = state.focus {
                 rdr.get_mut(real_index).unwrap().set_stage(txt.clone());
             }
-            state.window = Window::Table;
+            state.focus = WindowFocus::Table;
         }
         KeyCode::Char(char) => {
-            if let Window::StageEdit(ref mut txt, _) = state.window {
+            if let WindowFocus::StageEdit(ref mut txt, _) = state.focus {
                 txt.push(char);
             }
         }
         KeyCode::Backspace => {
-            if let Window::StageEdit(ref mut txt, _) = state.window {
+            if let WindowFocus::StageEdit(ref mut txt, _) = state.focus {
                 txt.pop();
             }
         }

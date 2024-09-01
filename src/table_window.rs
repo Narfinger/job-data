@@ -5,8 +5,9 @@ use ratatui::{
 };
 use std::ops::ControlFlow;
 
-use crate::types::{GuiState, Record, Save, Status, Window};
+use crate::types::{GuiState, Record, Save, Status, WindowFocus};
 
+/// draw a single record
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
     let color = match r.status {
         Status::Todo => Color::Red,
@@ -31,6 +32,7 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     .style(Style::default().fg(color))
 }
 
+/// draw the main table
 pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
     let rows = state
         .rdr
@@ -61,6 +63,7 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
     frame.render_stateful_widget(table, r, &mut state.table_state);
 }
 
+/// handle input for the table
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> ControlFlow<Save> {
     match key.code {
         KeyCode::Esc => {
@@ -96,13 +99,13 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
             // yes, the state is on the table index not the real index
             state.changed_this_exection.insert(real_index);
             let txt = state.rdr.get(real_index).unwrap().stage.clone();
-            state.window = Window::StageEdit(txt, real_index);
+            state.focus = WindowFocus::StageEdit(txt, real_index);
         }
         KeyCode::Char('?') => {
-            state.window = Window::Help;
+            state.focus = WindowFocus::Help;
         }
         KeyCode::Char('/') => {
-            state.window = Window::Search;
+            state.focus = WindowFocus::Search;
         }
         _ => {}
     }

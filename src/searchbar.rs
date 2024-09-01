@@ -8,11 +8,12 @@ use ratatui::{
 
 use crate::{
     table_window,
-    types::{GuiState, Window},
+    types::{GuiState, WindowFocus},
 };
 
+/// draw the search input field
 pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
-    let (style, txt) = if state.window == Window::Search {
+    let (style, txt) = if state.focus == WindowFocus::Search {
         (
             Style::default().fg(Color::Green),
             state.search.clone().unwrap_or_default(),
@@ -24,11 +25,12 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     frame.render_widget(input, r);
 }
 
+/// handle search input and defer to table if we do not know what to do with it
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
     match key.code {
         KeyCode::Esc => {
             state.search.take();
-            state.window = Window::Table;
+            state.focus = WindowFocus::Table;
         }
         KeyCode::Char(k) => {
             if let Some(ref mut s) = state.search {
@@ -38,6 +40,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             }
         }
         _ => {
+            // we still want normal stuff
             table_window::handle_input(key, state);
         }
     }

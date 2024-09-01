@@ -7,6 +7,7 @@ use ratatui::{
 
 use crate::types::{GuiState, Status};
 
+/// Span for a single value in status
 fn single_val<'a>(st: Status, val: usize, total: usize, color: Color) -> Span<'a> {
     Span::styled(
         format!(
@@ -20,6 +21,7 @@ fn single_val<'a>(st: Status, val: usize, total: usize, color: Color) -> Span<'a
     )
 }
 
+/// Returns a line that gives all the stats
 fn stats<'a>(state: &'a GuiState) -> Line<'a> {
     let total = state.rdr.len();
     let todos = state
@@ -52,6 +54,7 @@ fn stats<'a>(state: &'a GuiState) -> Line<'a> {
     Line::from(spans)
 }
 
+/// Draw the stats frame
 pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     let widget = stats(state);
     frame.render_widget(widget, r);

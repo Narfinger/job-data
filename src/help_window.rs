@@ -1,22 +1,15 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::{Constraint, Flex, Layout, Rect},
+    layout::{Constraint, Rect},
     style::{Color, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List},
     Frame,
 };
 
-use crate::types::{GuiState, Window};
+use crate::types::{center, WindowFocus, GuiState};
 
-fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
-    let [area] = Layout::horizontal([horizontal])
-        .flex(Flex::Center)
-        .areas(area);
-    let [area] = Layout::vertical([vertical]).flex(Flex::Center).areas(area);
-    area
-}
-
+/// helper function for the help style text coloring
 fn styled_text<'a>(key: &'a str, text: &'a str) -> Line<'a> {
     Line::from(vec![
         Span::styled("- ", Style::default()),
@@ -26,7 +19,8 @@ fn styled_text<'a>(key: &'a str, text: &'a str) -> Line<'a> {
     ])
 }
 
-pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
+/// draw the help window
+pub(crate) fn draw(frame: &mut Frame, _: Rect, _: &GuiState) {
     let area = center(
         frame.area(),
         Constraint::Percentage(30),
@@ -37,6 +31,7 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
         styled_text("q", "to exit wit saving"),
         styled_text("v", "to change the stage visiblity"),
         styled_text("s", "to change stage"),
+        styled_text("/", "search the names"),
         styled_text("Enter", "to toggle through status"),
         styled_text("?", "help"),
     ]))
@@ -45,10 +40,11 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     frame.render_widget(help, area);
 }
 
+/// help window input handler
 pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
     match key.code {
         KeyCode::Esc | KeyCode::Char('q') => {
-            state.window = Window::Table;
+            state.focus = WindowFocus::Table;
         }
         _ => {}
     }
