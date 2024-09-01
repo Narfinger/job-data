@@ -160,6 +160,7 @@ impl Record {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// Which part of jobs we show
 pub(crate) enum GuiView {
     Normal,
     Old,
@@ -177,24 +178,36 @@ impl GuiView {
 }
 
 pub(crate) struct GuiState<'a> {
+    /// The records
     pub(crate) rdr: &'a mut [Record],
+    /// The main table state
     pub(crate) table_state: TableState,
+    /// Which parts of job we show
     pub(crate) view: GuiView,
+    /// which window we have in focus
     pub(crate) window: Window,
     /// record the index of all things we changed today so that we still show them
     pub(crate) changed_this_exection: HashSet<usize>,
+    /// Are we searching something
+    pub(crate) search: Option<String>,
 }
 
 impl<'a> GuiState<'a> {
     /// the filter function of which ones to show
     pub(crate) fn filter(&self, index: &usize, r: &Record) -> bool {
-        r.status == Status::Todo
-            || self.changed_this_exection.contains(index)
-            || match self.view {
-                GuiView::Normal => r.status == Status::Pending && !r.is_old(),
-                GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
-                GuiView::All => true,
-            }
+        let normal_filtering = self.search.as_ref().map(|s| s.is_empty()).unwrap_or(true);
+        if normal_filtering {
+            r.status == Status::Todo
+                || self.changed_this_exection.contains(index)
+                || match self.view {
+                    GuiView::Normal => r.status == Status::Pending && !r.is_old(),
+                    GuiView::Old => r.status == Status::Todo || r.status == Status::Pending,
+                    GuiView::All => true,
+                }
+        } else {
+            let search_string = &self.search.as_ref().unwrap();
+            r.name.contains(*search_string)
+        }
     }
 
     pub(crate) fn get_real_index(&self) -> usize {
@@ -214,6 +227,7 @@ pub(crate) enum Window {
     Table,
     StageEdit(String, usize),
     Help,
+    Search,
 }
 
 pub(crate) enum Save {

@@ -5,10 +5,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::{
-    table_window,
-    types::{GuiState, Window},
-};
+use crate::types::{GuiState, Window};
 
 fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -> Rect {
     let [area] = Layout::horizontal([horizontal])

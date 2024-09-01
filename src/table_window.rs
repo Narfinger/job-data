@@ -101,6 +101,9 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
         KeyCode::Char('?') => {
             state.window = Window::Help;
         }
+        KeyCode::Char('/') => {
+            state.window = Window::Search;
+        }
         _ => {}
     }
     ControlFlow::Continue(())

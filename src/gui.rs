@@ -29,6 +29,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
         view: GuiView::Normal,
         window: Window::Table,
         changed_this_exection: HashSet::new(),
+        search: None,
     };
 
     let save;
@@ -38,8 +39,8 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Percentage(2),
-                    Constraint::Percentage(98),
-                    Constraint::Percentage(5),
+                    Constraint::Percentage(91),
+                    Constraint::Percentage(7),
                 ])
                 .split(frame.area());
 
@@ -50,6 +51,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                 Window::Table => {}
                 Window::StageEdit(_, _) => status_edit_window::draw(frame, layout[1], &state),
                 Window::Help => help_window::draw(frame, layout[1], &state),
+                Window::Search => {}
             };
         })?;
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -68,6 +70,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                             status_edit_window::handle_input(key, &mut state);
                         }
                         Window::Help => help_window::handle_input(key, &mut state),
+                        Window::Search => searchbar::handle_input(key, &mut state),
                     };
                 }
             }

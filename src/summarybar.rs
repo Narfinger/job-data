@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 use ratatui::{
     layout::Rect,
     style::{Color, Style},
     text::{Line, Span},
-    widgets::Block,
     Frame,
 };
-use yansi::Paint;
 
 use crate::types::{GuiState, Status};
 
@@ -25,7 +21,7 @@ fn single_val<'a>(st: Status, val: usize, total: usize, color: Color) -> Span<'a
 }
 
 fn stats<'a>(state: &'a GuiState) -> Line<'a> {
-    let total = state.rdr.iter().count();
+    let total = state.rdr.len();
     let todos = state
         .rdr
         .iter()
