@@ -1,6 +1,6 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::{Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Position, Rect},
     style::{Color, Style},
     widgets::{Block, Clear, Paragraph},
     Frame,
@@ -37,9 +37,14 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
     let l =
         Layout::vertical(vec![Constraint::Percentage(50), Constraint::Percentage(50)]).split(area);
 
+    let (x, y) = match s.focus {
+        AddFocusField::Company => (l[0].x + 1 + s.company.len() as u16, l[0].y + 1),
+        AddFocusField::JobName => (l[1].x + 1 + s.jobname.len() as u16, l[1].y + 1),
+    };
     frame.render_widget(Clear, area);
     frame.render_widget(company, l[0]);
     frame.render_widget(subname, l[1]);
+    frame.set_cursor_position(Position::new(x, y))
 }
 
 /// add window input handler
