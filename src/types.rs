@@ -105,6 +105,8 @@ pub(crate) struct Record {
     pub(crate) additional_info: String,
     /// the status of the job
     pub(crate) status: Status,
+    /// where
+    pub(crate) place: String,
 }
 
 impl PartialOrd for Record {
@@ -137,6 +139,7 @@ impl Record {
             additional_info: String::new(),
             status: Status::Todo,
             last_action_date: DATE_STRING.clone(),
+            place: String::new(),
         }
     }
 
@@ -178,11 +181,7 @@ impl Record {
 
     /// print one entry
     pub(crate) fn print(&self, index: usize, truncate: bool) -> anyhow::Result<()> {
-        let mut r = self.additional_info.clone();
-        if truncate {
-            r.truncate(30);
-        }
-        if self.is_old() {
+        if truncate && self.is_old() {
             println!(
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
                 index.dim(),
@@ -191,9 +190,9 @@ impl Record {
                 self.name.bold().dim(),
                 self.subname.bold().dim(),
                 self.stage.dim(),
-                r.dim(),
+                self.place,
             );
-        } else {
+        } else if truncate {
             println!(
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
                 index,
@@ -202,7 +201,19 @@ impl Record {
                 self.name.bold(),
                 self.subname.bold(),
                 self.stage,
-                r,
+                self.place,
+            );
+        } else {
+            println!(
+                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {} | {}",
+                index,
+                self.status.print(),
+                self.last_action_date,
+                self.name.bold(),
+                self.subname.bold(),
+                self.stage,
+                self.additional_info,
+                self.place,
             );
         }
         Ok(())

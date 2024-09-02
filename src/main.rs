@@ -76,16 +76,30 @@ struct Cli {
 /// print all entries
 fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
-    println!(
-        "{:2} | {:^10} | {:^20} | {:^20} | {:^37} | {:^30} | {}",
-        "",
-        "Status".underline(),
-        "Last Date".underline(),
-        "Name".underline(),
-        "Subname".underline(),
-        "Stage".underline(),
-        "Info".underline()
-    );
+    if truncate {
+        println!(
+            "{:2} | {:^10} | {:^20} | {:^20} | {:^37} | {:^30} | {}",
+            "",
+            "Status".underline(),
+            "Last Date".underline(),
+            "Name".underline(),
+            "Subname".underline(),
+            "Stage".underline(),
+            "Place".underline(),
+        );
+    } else {
+        println!(
+            "{:2} | {:^10} | {:^20} | {:^20} | {:^37} | {:^30} | {:^20} | {}",
+            "",
+            "Status".underline(),
+            "Last Date".underline(),
+            "Name".underline(),
+            "Subname".underline(),
+            "Stage".underline(),
+            "Info".underline(),
+            "Place".underline(),
+        );
+    }
 
     for (i, record) in rdr.iter().enumerate() {
         // we want to keep the record numbers the same
@@ -238,6 +252,7 @@ fn main() -> anyhow::Result<()> {
             stage: "Pending".to_string(),
             additional_info: v.get(2).unwrap_or(&String::new()).clone(),
             status: Status::Todo,
+            place: String::new(),
         };
         rdr.push(r);
         write(&rdr)?;

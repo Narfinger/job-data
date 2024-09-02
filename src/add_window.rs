@@ -5,7 +5,6 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph},
     Frame,
 };
-use yansi::Paint;
 
 use crate::types::{center, AddFocusField, GuiState, Record, WindowFocus};
 
@@ -14,7 +13,7 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
     let area = center(
         frame.area(),
         Constraint::Percentage(30),
-        Constraint::Length(30), // top and bottom border + content
+        Constraint::Length(10), // top and bottom border + content
     );
     let s = state.add.as_ref().unwrap();
 
@@ -28,7 +27,7 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
             },
         ));
     let subname = Paragraph::new(s.jobname.clone())
-        .block(Block::bordered().title("job name"))
+        .block(Block::bordered().title("Job Name"))
         .style(if s.focus == AddFocusField::JobName {
             highlight_style
         } else {

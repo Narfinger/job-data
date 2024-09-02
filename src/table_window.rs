@@ -49,12 +49,15 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
         Constraint::Length(30),
         Constraint::Length(30),
         Constraint::Length(20),
+        Constraint::Length(20),
     ];
     let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
-            Row::new(vec!["#", "Status", "LastDate", "Name", "Subname", "Info"])
-                .style(Style::new().bold()),
+            Row::new(vec![
+                "#", "Status", "LastDate", "Name", "Subname", "Info", "Place",
+            ])
+            .style(Style::new().bold()),
         )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>")
