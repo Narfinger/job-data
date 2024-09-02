@@ -15,7 +15,7 @@ use crate::{
 };
 
 /// main gui run function
-pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
+pub(crate) fn run(rdr: &mut Vec<Record>) -> anyhow::Result<Save> {
     rdr.sort_unstable();
     //rdr.reverse();
 

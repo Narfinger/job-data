@@ -126,6 +126,18 @@ impl Ord for Record {
 }
 
 impl Record {
+    /// cronstruct a new one
+    pub(crate) fn new(company: String, jobname: String) -> Self {
+        Record {
+            name: company,
+            subname: jobname,
+            stage: String::new(),
+            additional_info: String::new(),
+            status: Status::Todo,
+            last_action_date: DATE_STRING.clone(),
+        }
+    }
+
     /// update the last action date
     fn update_date(&mut self) {
         self.last_action_date = DATE_STRING.clone();
@@ -220,7 +232,7 @@ impl GuiView {
 /// state of the tui
 pub(crate) struct GuiState<'a> {
     /// The records
-    pub(crate) rdr: &'a mut [Record],
+    pub(crate) rdr: &'a mut Vec<Record>,
     /// The main table state
     pub(crate) table_state: TableState,
     /// Which parts of job we show

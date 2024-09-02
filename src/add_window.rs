@@ -6,8 +6,9 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph},
     Frame,
 };
+use yansi::Paint;
 
-use crate::types::{center, AddFocusField, GuiState, WindowFocus};
+use crate::types::{center, AddFocusField, GuiState, Record, WindowFocus};
 
 /// draw the add window
 pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
@@ -60,7 +61,11 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             AddFocusField::JobName => state.add.as_mut().unwrap().jobname.push(c),
         },
         KeyCode::Enter => {
-            panic!("NYI");
+            let s = state.add.as_ref().unwrap();
+            let record = Record::new(s.company.clone(), s.jobname.clone());
+            state.rdr.push(record);
+            state.add = None;
+            state.focus = WindowFocus::Table;
         }
         KeyCode::Backspace => {
             match state.add.as_ref().unwrap().focus {
