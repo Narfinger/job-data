@@ -120,7 +120,9 @@ impl Ord for Record {
         } else if self.status != Status::Todo && other.status == Status::Todo {
             Ordering::Greater
         } else {
-            self.last_action_date.cmp(&other.last_action_date)
+            let my_date: Date = Date::parse(&self.last_action_date, &FORMAT).unwrap();
+            let other_date: Date = Date::parse(&other.last_action_date, &FORMAT).unwrap();
+            my_date.cmp(&other_date).reverse()
         }
     }
 }
