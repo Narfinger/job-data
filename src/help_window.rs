@@ -32,6 +32,8 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, _: &GuiState) {
         styled_text("v", "to change the stage visiblity"),
         styled_text("s", "to change stage"),
         styled_text("a", "add a job"),
+        styled_text("i", "information about highlighted job"),
+        styled_text("p", "edit the place"),
         styled_text("/", "search the names"),
         styled_text("Enter", "to toggle through status"),
         styled_text("?", "help"),

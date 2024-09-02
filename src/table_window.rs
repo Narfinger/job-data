@@ -118,6 +118,12 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
                 focus: crate::types::AddFocusField::Company,
             });
         }
+        KeyCode::Char('i') => {
+            panic!("info view not yet implemented");
+        }
+        KeyCode::Char('p') => {
+            panic!("place edit not yet implemented");
+        }
         _ => {}
     }
     ControlFlow::Continue(())
