@@ -2,7 +2,6 @@ use ratatui::{
     crossterm::event::{self, KeyCode},
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Span, Text},
     widgets::{Block, Clear, Paragraph},
     Frame,
 };
