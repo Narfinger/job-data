@@ -53,7 +53,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
         KeyCode::Esc => {
             state.focus = WindowFocus::Table;
         }
-        KeyCode::Up | KeyCode::Down => {
+        KeyCode::Up | KeyCode::Down | KeyCode::Tab => {
             let res = match state.add.as_ref().unwrap().focus {
                 AddFocusField::Company => AddFocusField::JobName,
                 AddFocusField::JobName => AddFocusField::Company,
@@ -69,6 +69,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             let record = Record::new(s.company.clone(), s.jobname.clone());
             state.rdr.push(record);
             state.add = None;
+            state.table_state.select_last();
             state.focus = WindowFocus::Table;
         }
         KeyCode::Backspace => {
