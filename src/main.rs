@@ -11,6 +11,7 @@ use std::{
 use types::{Record, Save, Status, DATE_STRING};
 use yansi::Paint;
 
+mod add_window;
 mod gui;
 mod help_window;
 mod searchbar;

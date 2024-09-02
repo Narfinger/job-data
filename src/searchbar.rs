@@ -39,6 +39,9 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
                 state.search = Some(k.to_string());
             }
         }
+        KeyCode::Backspace => {
+            state.search.as_mut().unwrap().pop();
+        }
         _ => {
             // we still want normal stuff
             table_window::handle_input(key, state);

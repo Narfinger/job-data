@@ -10,7 +10,7 @@ use ratatui::{
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
-    help_window, searchbar, status_edit_window, summarybar, table_window,
+    add_window, help_window, searchbar, status_edit_window, summarybar, table_window,
     types::{GuiState, GuiView, Record, Save, WindowFocus},
 };
 
@@ -31,6 +31,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
         focus: WindowFocus::Table,
         changed_this_exection: HashSet::new(),
         search: None,
+        add: None,
     };
 
     let save;
@@ -53,6 +54,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                 WindowFocus::StageEdit(_, _) => status_edit_window::draw(frame, layout[1], &state),
                 WindowFocus::Help => help_window::draw(frame, layout[1], &state),
                 WindowFocus::Search => {}
+                WindowFocus::Add => add_window::draw(frame, layout[1], &state),
             };
         })?;
         if event::poll(std::time::Duration::from_millis(16))? {
@@ -72,6 +74,7 @@ pub(crate) fn run(rdr: &mut [Record]) -> anyhow::Result<Save> {
                         }
                         WindowFocus::Help => help_window::handle_input(key, &mut state),
                         WindowFocus::Search => searchbar::handle_input(key, &mut state),
+                        WindowFocus::Add => add_window::handle_input(key, &mut state),
                     };
                 }
             }

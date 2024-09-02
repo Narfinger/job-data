@@ -3,9 +3,12 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Row, Table},
 };
-use std::ops::ControlFlow;
+use std::{
+    default,
+    ops::{Add, ControlFlow},
+};
 
-use crate::types::{GuiState, Record, Save, Status, WindowFocus};
+use crate::types::{AddStruct, GuiState, Record, Save, Status, WindowFocus};
 
 /// draw a single record
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
@@ -106,6 +109,14 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
         }
         KeyCode::Char('/') => {
             state.focus = WindowFocus::Search;
+        }
+        KeyCode::Char('a') => {
+            state.focus = WindowFocus::Add;
+            state.add = Some(AddStruct {
+                company: String::new(),
+                jobname: String::new(),
+                focus: crate::types::AddFocusField::Company,
+            });
         }
         _ => {}
     }

@@ -231,6 +231,8 @@ pub(crate) struct GuiState<'a> {
     pub(crate) changed_this_exection: HashSet<usize>,
     /// Are we searching something
     pub(crate) search: Option<String>,
+    /// A job we want to add
+    pub(crate) add: Option<AddStruct>,
 }
 
 impl<'a> GuiState<'a> {
@@ -264,6 +266,19 @@ impl<'a> GuiState<'a> {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
+pub(crate) enum AddFocusField {
+    Company,
+    JobName,
+}
+
+#[derive(Debug)]
+pub(crate) struct AddStruct {
+    pub(crate) company: String,
+    pub(crate) jobname: String,
+    pub(crate) focus: AddFocusField,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum WindowFocus {
     /// The table
@@ -274,6 +289,8 @@ pub(crate) enum WindowFocus {
     Help,
     /// The search lower bar
     Search,
+    /// The add popup
+    Add,
 }
 
 /// Should we save the records to disk or not
