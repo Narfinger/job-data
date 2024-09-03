@@ -1,6 +1,6 @@
 use ratatui::{
     crossterm::event::{self, KeyCode},
-    layout::Rect,
+    layout::{Position, Rect},
     style::{Color, Style},
     widgets::{Block, Paragraph},
     Frame,
@@ -21,8 +21,16 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &GuiState) {
     } else {
         (Style::default(), "search".to_string())
     };
+    let length = txt.len();
     let input = Paragraph::new(txt).style(style).block(Block::bordered());
     frame.render_widget(input, r);
+    if state.focus == WindowFocus::Search {
+        frame.set_cursor_position(Position::new(
+            r.x + length as u16 + 1,
+            // Move one line down, from the border to the input line
+            r.y + 1,
+        ))
+    }
 }
 
 /// handle search input and defer to table if we do not know what to do with it
