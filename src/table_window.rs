@@ -3,7 +3,7 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Row, Table},
 };
-use std::ops::{Add, ControlFlow};
+use std::ops::ControlFlow;
 
 use crate::types::{AddStruct, GuiState, Record, Save, Status, WindowFocus};
 
