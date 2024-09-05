@@ -6,10 +6,10 @@ use ratatui::{
 };
 use time::Date;
 
-use crate::types::{GuiState, Status, DATE_STRING, FORMAT, NOW};
+use crate::types::{GuiState, Status, DATE_STRING, FORMAT};
 
 /// Span for a single value in status
-fn single_val<'a>(st: Status, val: usize, total: usize, color: Color) -> Span<'a> {
+fn single_val<'a>(st: &str, val: usize, total: usize, color: Color) -> Span<'a> {
     let percent = (val as f64 / total as f64) * 100_f64;
     Span::styled(
         format!("{}: {}/{} ({:.1}%) | ", st, val, total, percent),
@@ -25,11 +25,9 @@ fn stats<'a>(state: &'a GuiState) -> Line<'a> {
         .iter()
         .filter(|r| r.status == Status::Todo)
         .count();
-    let pending = state
-        .rdr
-        .iter()
-        .filter(|r| r.status == Status::Pending)
-        .count();
+    let pending_iter = state.rdr.iter().filter(|r| r.status == Status::Pending);
+    let pending = pending_iter.clone().count();
+    let pending_past = pending_iter.filter(|r| r.is_old()).count();
     let rejected = state
         .rdr
         .iter()
@@ -50,12 +48,13 @@ fn stats<'a>(state: &'a GuiState) -> Line<'a> {
         .unwrap();
 
     let spans = vec![
-        single_val(Status::Todo, todos, total, Color::Red),
-        single_val(Status::Pending, pending, total, Color::Yellow),
-        single_val(Status::Rejected, rejected, total, Color::Green),
-        single_val(Status::Declined, declined, total, Color::Green),
-        Span::styled(format!("Overall: {}", total), Style::default()),
-        Span::styled(format!(" | Last Edit: {}", last), Style::default()),
+        single_val("Todo", todos, total, Color::Red),
+        single_val("Pnd", pending - pending_past, total, Color::Yellow),
+        single_val("Pnd+", pending, total, Color::Yellow),
+        single_val("Rej", rejected, total, Color::Green),
+        single_val("Decl", declined, total, Color::Green),
+        Span::styled(format!("#: {}", total), Style::default()),
+        Span::styled(format!(" | Edit: {}", last), Style::default()),
         Span::styled(format!(" | Today: {}", *DATE_STRING), Style::default()),
     ];
     Line::from(spans)
