@@ -131,7 +131,7 @@ impl Ord for Record {
 
 impl Record {
     /// cronstruct a new one
-    pub(crate) fn new(company: String, jobname: String) -> Self {
+    pub(crate) fn new(company: String, jobname: String, place: String) -> Self {
         Record {
             name: company,
             subname: jobname,
@@ -139,7 +139,7 @@ impl Record {
             additional_info: String::new(),
             status: Status::Todo,
             last_action_date: DATE_STRING.clone(),
-            place: String::new(),
+            place,
         }
     }
 
@@ -295,12 +295,31 @@ impl<'a> GuiState<'a> {
 pub(crate) enum AddFocusField {
     Company,
     JobName,
+    Place,
+}
+
+impl AddFocusField {
+    pub(crate) fn next(&self) -> AddFocusField {
+        match self {
+            AddFocusField::Company => AddFocusField::JobName,
+            AddFocusField::JobName => AddFocusField::Place,
+            AddFocusField::Place => AddFocusField::Company,
+        }
+    }
+    pub(crate) fn prev(&self) -> AddFocusField {
+        match self {
+            AddFocusField::Company => AddFocusField::Place,
+            AddFocusField::JobName => AddFocusField::Company,
+            AddFocusField::Place => AddFocusField::JobName,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct AddStruct {
     pub(crate) company: String,
     pub(crate) jobname: String,
+    pub(crate) place: String,
     pub(crate) focus: AddFocusField,
 }
 

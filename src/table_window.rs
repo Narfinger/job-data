@@ -120,6 +120,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
             state.add = Some(AddStruct {
                 company: String::new(),
                 jobname: String::new(),
+                place: String::new(),
                 focus: crate::types::AddFocusField::Company,
             });
         }
