@@ -94,6 +94,10 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
                 state.changed_this_exection.insert(real_index);
             }
         }
+        KeyCode::Delete => {
+            let real_index = state.get_real_index();
+            state.rdr.remove(real_index);
+        }
         KeyCode::Char('v') => {
             state.view = state.view.next();
         }
@@ -119,7 +123,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
             });
         }
         KeyCode::Char('i') => {
-            panic!("info view not yet implemented");
+            state.focus = WindowFocus::Info;
         }
         KeyCode::Char('p') => {
             panic!("place edit not yet implemented");

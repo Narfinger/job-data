@@ -316,6 +316,8 @@ pub(crate) enum WindowFocus {
     Search,
     /// The add popup
     Add,
+    /// the info popup
+    Info,
 }
 
 /// Should we save the records to disk or not

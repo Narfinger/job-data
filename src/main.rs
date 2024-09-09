@@ -14,6 +14,7 @@ use yansi::Paint;
 mod add_window;
 mod gui;
 mod help_window;
+mod info_window;
 mod searchbar;
 mod status_edit_window;
 mod summarybar;
