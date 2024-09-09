@@ -28,6 +28,7 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
         r.name.to_owned(),
         r.subname.to_owned(),
         r.stage.to_owned(),
+        r.place.to_owned(),
     ])
     .style(Style::default().fg(color))
 }
