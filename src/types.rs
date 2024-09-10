@@ -321,6 +321,7 @@ pub(crate) struct AddStruct {
     pub(crate) jobname: String,
     pub(crate) place: String,
     pub(crate) focus: AddFocusField,
+    pub(crate) modify: Option<usize>,
 }
 
 #[derive(Debug, PartialEq, Eq)]

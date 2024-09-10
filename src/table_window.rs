@@ -5,7 +5,7 @@ use ratatui::{
 };
 use std::ops::ControlFlow;
 
-use crate::types::{AddStruct, GuiState, Record, Save, Status, WindowFocus};
+use crate::types::{AddFocusField, AddStruct, GuiState, Record, Save, Status, WindowFocus};
 
 /// draw a single record
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
@@ -122,13 +122,23 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
                 jobname: String::new(),
                 place: String::new(),
                 focus: crate::types::AddFocusField::Company,
+                modify: None,
             });
         }
         KeyCode::Char('i') => {
             state.focus = WindowFocus::Info;
         }
-        KeyCode::Char('p') => {
-            panic!("place edit not yet implemented");
+        KeyCode::Char('e') => {
+            state.focus = WindowFocus::Add;
+            let index = state.get_real_index();
+            let record = state.rdr.get(index).unwrap();
+            state.add = Some(AddStruct {
+                company: record.name.clone(),
+                jobname: record.subname.clone(),
+                place: record.place.clone(),
+                focus: AddFocusField::Company,
+                modify: Some(index),
+            });
         }
         _ => {}
     }

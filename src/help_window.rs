@@ -29,15 +29,15 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, _: &GuiState) {
     let help = (List::new([
         styled_text("Esc", "to exit without saving"),
         styled_text("q", "to exit wit saving"),
-        styled_text("d", "delete an entry"),
-        styled_text("Delete", "to change the stage visiblity"),
+        styled_text("Enter", "to toggle through status"),
+        styled_text("Delete", "delete an entry"),
+        styled_text("v", "toggle which entries we see"),
         styled_text("s", "to change stage"),
+        styled_text("?", "help"),
+        styled_text("/", "search the names"),
         styled_text("a", "add a job"),
         styled_text("i", "information about highlighted job"),
-        styled_text("p", "edit the place"),
-        styled_text("/", "search the names"),
-        styled_text("Enter", "to toggle through status"),
-        styled_text("?", "help"),
+        styled_text("e", "edit the entry"),
     ]))
     .block(Block::new().borders(Borders::ALL));
     frame.render_widget(Clear, area);
