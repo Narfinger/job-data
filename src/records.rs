@@ -178,11 +178,11 @@ impl Records {
         Ok(())
     }
 
-    pub(crate) fn get<'a>(&'a self, index: usize) -> Option<&'a Record> {
+    pub(crate) fn get(&self, index: usize) -> Option<&Record> {
         self.0.get(index)
     }
 
-    pub(crate) fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut Record> {
+    pub(crate) fn get_mut(&mut self, index: usize) -> Option<&mut Record> {
         self.0.get_mut(index)
     }
 
@@ -190,7 +190,7 @@ impl Records {
         self.0.len()
     }
 
-    pub(crate) fn iter<'a>(&'a self) -> std::slice::Iter<'_, Record> {
+    pub(crate) fn iter(&self) -> std::slice::Iter<'_, Record> {
         self.0.iter()
     }
 }

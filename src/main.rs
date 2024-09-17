@@ -4,8 +4,6 @@ use inquire::Confirm;
 use records::{Record, Records};
 use std::{
     collections::HashMap,
-    fs::File,
-    io::{BufReader, BufWriter},
     path::PathBuf,
     sync::LazyLock,
 };
