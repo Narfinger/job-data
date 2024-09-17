@@ -6,7 +6,10 @@ use ratatui::{
     Frame,
 };
 
-use crate::types::{center, AddFocusField, AddStruct, GuiState, Record, WindowFocus};
+use crate::{
+    records::Record,
+    types::{center, AddFocusField, AddStruct, GuiState, WindowFocus},
+};
 
 fn paragraph<'a>(
     s: &AddStruct,
@@ -50,7 +53,7 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
     let (x, y) = match s.focus {
         AddFocusField::Company => (l[0].x + 1 + s.company.len() as u16, l[0].y + 1),
         AddFocusField::JobName => (l[1].x + 1 + s.jobname.len() as u16, l[1].y + 1),
-        AddFocusField::Place => (l[2].x + 1 + s.jobname.len() as u16, l[2].y + 1),
+        AddFocusField::Place => (l[2].x + 1 + s.place.len() as u16, l[2].y + 1),
     };
     frame.render_widget(Clear, area);
     frame.render_widget(title_block, area);
@@ -67,10 +70,10 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             state.focus = WindowFocus::Table;
             state.add = None;
         }
-        KeyCode::Up | KeyCode::Tab => {
+        KeyCode::Up => {
             state.add.as_mut().unwrap().focus = state.add.as_ref().unwrap().focus.prev();
         }
-        KeyCode::Down => {
+        KeyCode::Down | KeyCode::Tab => {
             state.add.as_mut().unwrap().focus = state.add.as_ref().unwrap().focus.next();
         }
         KeyCode::Char(c) => match state.add.as_ref().unwrap().focus {
@@ -82,12 +85,13 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) {
             let s = state.add.as_ref().unwrap();
             let record = Record::new(s.company.clone(), s.jobname.clone(), s.place.clone());
             if let Some(index) = state.add.as_ref().unwrap().modify {
-                state.rdr[index] = record;
+                state.rdr.0[index] = record;
             } else {
-                state.rdr.push(record);
+                state.rdr.0.push(record);
             }
             state.add = None;
             state.table_state.select_last();
+            state.rdr.write().expect("Error in writing");
             state.focus = WindowFocus::Table;
         }
         KeyCode::Backspace => {

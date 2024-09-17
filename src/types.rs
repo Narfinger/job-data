@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashSet, sync::LazyLock};
+use std::{collections::HashSet, sync::LazyLock};
 
 use anyhow::Context;
 use ratatui::{
@@ -8,9 +8,11 @@ use ratatui::{
 use serde::{Deserialize, Serialize};
 use time::{
     format_description::{self, BorrowedFormatItem},
-    Date, Duration, OffsetDateTime, UtcOffset,
+    OffsetDateTime, UtcOffset,
 };
 use yansi::{Paint, Painted};
+
+use crate::records::{Record, Records};
 
 /// Time format
 pub(crate) static FORMAT: LazyLock<Vec<BorrowedFormatItem<'_>>> =
@@ -89,137 +91,6 @@ pub(crate) fn center(area: Rect, horizontal: Constraint, vertical: Constraint) -
     area
 }
 
-/// A record of a job application
-#[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub(crate) struct Record {
-    /// the last time any action happened to this job
-    pub(crate) last_action_date: String,
-    /// the name of the company
-    pub(crate) name: String,
-    /// the job name
-    pub(crate) subname: String,
-    /// at what stage are we, i.e., first interview, second and so on
-    pub(crate) stage: String,
-    /// some additional information we want to store
-    pub(crate) additional_info: String,
-    /// the status of the job
-    pub(crate) status: Status,
-    /// where
-    pub(crate) place: String,
-}
-
-impl PartialOrd for Record {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Record {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        if self.status == Status::Todo && other.status != Status::Todo {
-            Ordering::Less
-        } else if self.status != Status::Todo && other.status == Status::Todo {
-            Ordering::Greater
-        } else {
-            let my_date: Date = Date::parse(&self.last_action_date, &FORMAT).unwrap();
-            let other_date: Date = Date::parse(&other.last_action_date, &FORMAT).unwrap();
-            my_date.cmp(&other_date).reverse()
-        }
-    }
-}
-
-impl Record {
-    /// cronstruct a new one
-    pub(crate) fn new(company: String, jobname: String, place: String) -> Self {
-        Record {
-            name: company,
-            subname: jobname,
-            stage: String::new(),
-            additional_info: String::new(),
-            status: Status::Todo,
-            last_action_date: DATE_STRING.clone(),
-            place,
-        }
-    }
-
-    /// update the last action date
-    fn update_date(&mut self) {
-        self.last_action_date = DATE_STRING.clone();
-    }
-
-    /// toggle stage
-    pub(crate) fn next_stage(&mut self) {
-        self.status = self.status.next();
-        self.update_date();
-    }
-
-    /// sets the status
-    pub(crate) fn set_status(&mut self, status: Status) {
-        self.status = status;
-        self.update_date();
-    }
-
-    /// sets the stage of the job
-    pub(crate) fn set_stage(&mut self, stage: String) {
-        self.stage = stage;
-        self.update_date();
-    }
-
-    /// test if the job is old, i.e., 2 weeks after last action date
-    pub(crate) fn is_old(&self) -> bool {
-        let d_primitive_date = Date::parse(&self.last_action_date, &FORMAT)
-            .context("Cannot parse primitive date")
-            .expect("Error");
-        let d_primitive = d_primitive_date
-            .with_hms(0, 0, 0)
-            .context("Could not add time")
-            .expect("Error");
-        let d = d_primitive.assume_offset(*CURRENT_OFFSET);
-        self.status != Status::Todo && *NOW - d >= Duration::weeks(2)
-    }
-
-    /// print one entry
-    pub(crate) fn print(&self, index: usize, truncate: bool) -> anyhow::Result<()> {
-        if truncate && self.is_old() {
-            println!(
-                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-                index.dim(),
-                self.status.print().dim(),
-                self.last_action_date.dim(),
-                self.name.bold().dim(),
-                self.subname.bold().dim(),
-                self.stage.dim(),
-                self.place,
-            );
-        } else if truncate {
-            println!(
-                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
-                index,
-                self.status.print(),
-                self.last_action_date,
-                self.name.bold(),
-                self.subname.bold(),
-                self.stage,
-                self.place,
-            );
-        } else {
-            println!(
-                "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {} | {}",
-                index,
-                self.status.print(),
-                self.last_action_date,
-                self.name.bold(),
-                self.subname.bold(),
-                self.stage,
-                self.additional_info,
-                self.place,
-            );
-        }
-        Ok(())
-    }
-}
-
 /// Which part of jobs we show
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum GuiView {
@@ -245,7 +116,7 @@ impl GuiView {
 /// state of the tui
 pub(crate) struct GuiState<'a> {
     /// The records
-    pub(crate) rdr: &'a mut Vec<Record>,
+    pub(crate) rdr: &'a mut Records,
     /// The main table state
     pub(crate) table_state: TableState,
     /// Which parts of job we show
@@ -282,6 +153,7 @@ impl<'a> GuiState<'a> {
     pub(crate) fn get_real_index(&self) -> usize {
         let index = self.table_state.selected().unwrap();
         self.rdr
+            .0
             .iter()
             .enumerate()
             .filter(|(index, r)| self.filter(index, r))

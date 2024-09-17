@@ -5,7 +5,10 @@ use ratatui::{
 };
 use std::ops::ControlFlow;
 
-use crate::types::{AddFocusField, AddStruct, GuiState, Record, Save, Status, WindowFocus};
+use crate::{
+    records::Record,
+    types::{AddFocusField, AddStruct, GuiState, Save, Status, WindowFocus},
+};
 
 /// draw a single record
 fn draw_record(index: usize, r: &Record) -> Row<'_> {
@@ -97,7 +100,7 @@ pub(crate) fn handle_input(key: event::KeyEvent, state: &mut GuiState) -> Contro
         }
         KeyCode::Delete => {
             let real_index = state.get_real_index();
-            state.rdr.remove(real_index);
+            state.rdr.0.remove(real_index);
         }
         KeyCode::Char('v') => {
             state.view = state.view.next();

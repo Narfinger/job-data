@@ -1,6 +1,7 @@
 use anyhow::Context;
 use clap::{arg, command, Parser};
 use inquire::Confirm;
+use records::{Record, Records};
 use std::{
     collections::HashMap,
     fs::File,
@@ -8,13 +9,14 @@ use std::{
     path::PathBuf,
     sync::LazyLock,
 };
-use types::{Record, Save, Status, DATE_STRING};
+use types::{Save, Status, DATE_STRING};
 use yansi::Paint;
 
 mod add_window;
 mod gui;
 mod help_window;
 mod info_window;
+mod records;
 mod searchbar;
 mod status_edit_window;
 mod summarybar;
@@ -75,7 +77,7 @@ struct Cli {
 }
 
 /// print all entries
-fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
+fn print(rdr: &Records, truncate: bool, show_all: bool) -> anyhow::Result<()> {
     print_stats(rdr)?;
     if truncate {
         println!(
@@ -102,7 +104,7 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
         );
     }
 
-    for (i, record) in rdr.iter().enumerate() {
+    for (i, record) in rdr.0.iter().enumerate() {
         // we want to keep the record numbers the same
         if show_all || record.status == Status::Pending || record.status == Status::Todo {
             record.print(i, truncate)?;
@@ -112,8 +114,8 @@ fn print(rdr: &[Record], truncate: bool, show_all: bool) -> anyhow::Result<()> {
 }
 
 /// print the stats
-fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
-    let vals = rdr.iter().fold(HashMap::new(), |mut red, elem| {
+fn print_stats(rdr: &Records) -> anyhow::Result<()> {
+    let vals = rdr.0.iter().fold(HashMap::new(), |mut red, elem| {
         let val = red.get(&elem.status).unwrap_or(&0);
         red.insert(&elem.status, val + 1);
         red
@@ -121,12 +123,12 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     println!("-------------------STATS----------------------------------------");
     for (key, val) in vals.iter() {
         let key_print = key.print();
-        let percentage: f64 = (*val as f64) / (rdr.len() as f64);
+        let percentage: f64 = (*val as f64) / (rdr.0.len() as f64);
         print!(
             "{}: {}/{} ({:.1}%)| ",
             key_print,
             val,
-            rdr.len(),
+            rdr.0.len(),
             percentage * 100_f64
         );
     }
@@ -134,20 +136,8 @@ fn print_stats(rdr: &[Record]) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// write records to file
-fn write(rdr: &[Record]) -> anyhow::Result<()> {
-    let f = File::create(PATH.clone())?;
-    let br = BufWriter::new(f);
-    let mut wtr = csv::Writer::from_writer(br);
-    for i in rdr {
-        wtr.serialize(i)?;
-    }
-    wtr.flush()?;
-    Ok(())
-}
-
 /// ask if we should change the status
-fn ask_if_change_status(rdr: &[Record], index: usize, new_stage: &Status) -> bool {
+fn ask_if_change_status(rdr: &Records, index: usize, new_stage: &Status) -> bool {
     let rec = rdr.get(index).unwrap();
     let ans = Confirm::new(&format!(
         "Do you want to change {} | {} from {} to {}",
@@ -164,7 +154,7 @@ fn ask_if_change_status(rdr: &[Record], index: usize, new_stage: &Status) -> boo
 }
 
 /// ask if we should change
-fn ask_if_change(rdr: &[Record], index: usize) -> bool {
+fn ask_if_change(rdr: &Records, index: usize) -> bool {
     let rec = rdr.get(index).unwrap();
     let ans = Confirm::new(&format!(
         "Do you want to change {} | {}",
@@ -180,10 +170,10 @@ fn ask_if_change(rdr: &[Record], index: usize) -> bool {
     }
 }
 
-fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Result<()> {
+fn change_status(rdr: &mut Records, index: usize, status: Status) -> anyhow::Result<()> {
     if ask_if_change_status(rdr, index, &status) {
         rdr.get_mut(index).unwrap().set_status(status);
-        write(rdr)?;
+        rdr.write()?;
     }
     Ok(())
 }
@@ -191,20 +181,7 @@ fn change_status(rdr: &mut [Record], index: usize, status: Status) -> anyhow::Re
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    let mut rdr = {
-        let f = File::open(PATH.clone())?;
-        let br = BufReader::new(f);
-        let rdr = csv::Reader::from_reader(br)
-            .deserialize()
-            .map(|r| r.unwrap())
-            .collect::<Vec<Record>>();
-        let rej = rdr
-            .iter()
-            .filter(|a| a.status == Status::Declined || a.status == Status::Rejected);
-        let pen = rdr.iter().filter(|a| a.status == Status::Pending);
-        let todo = rdr.iter().filter(|a| a.status == Status::Todo);
-        rej.chain(pen).chain(todo).cloned().collect::<Vec<Record>>()
-    };
+    let mut rdr = Records::load()?;
 
     if let Some(i) = cli.pending {
         change_status(&mut rdr, i, Status::Pending)?;
@@ -222,7 +199,7 @@ fn main() -> anyhow::Result<()> {
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
                 rdr.get_mut(i).unwrap().last_action_date = DATE_STRING.clone();
-                write(&rdr)?;
+                rdr.write()?;
             }
         } else {
             println!("Not a valid integer");
@@ -238,7 +215,7 @@ fn main() -> anyhow::Result<()> {
                 rdr.get_mut(i)
                     .unwrap()
                     .set_stage(v.get(1).unwrap().to_string());
-                write(&rdr)?;
+                rdr.write()?;
             }
         } else {
             println!("Not a valid integer");
@@ -255,21 +232,22 @@ fn main() -> anyhow::Result<()> {
             status: Status::Todo,
             place: String::new(),
         };
-        rdr.push(r);
-        write(&rdr)?;
+        rdr.0.push(r);
+        rdr.write()?;
         print(&rdr, true, true)?;
         return Ok(());
     } else if let Some(c) = cli.search {
         let res = rdr
+            .0
             .into_iter()
             .filter(|r| r.name.contains(&c))
             .collect::<Vec<Record>>();
-        print(&res, false, true)?;
+        print(&Records(res), false, true)?;
         return Ok(());
     } else if let Some(c) = cli.info {
         if let Some(res) = rdr.get(c) {
             let r = vec![res.clone()];
-            print(&r, false, true)?;
+            print(&Records(r), false, true)?;
         } else {
             println!("Could not find record");
         }
@@ -278,7 +256,7 @@ fn main() -> anyhow::Result<()> {
         match gui::run(&mut rdr)? {
             Save::Save => {
                 println!("Writing");
-                write(&rdr)?;
+                rdr.write()?;
             }
             Save::DoNotSave => {
                 println!("We did not save");

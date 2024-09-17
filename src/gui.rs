@@ -10,13 +10,15 @@ use ratatui::{
 use std::{collections::HashSet, io::stdout, ops::ControlFlow};
 
 use crate::{
-    add_window, help_window, info_window, searchbar, status_edit_window, summarybar, table_window,
-    types::{GuiState, GuiView, Record, Save, WindowFocus},
+    add_window, help_window, info_window,
+    records::Records,
+    searchbar, status_edit_window, summarybar, table_window,
+    types::{GuiState, GuiView, Save, WindowFocus},
 };
 
 /// main gui run function
-pub(crate) fn run(rdr: &mut Vec<Record>) -> anyhow::Result<Save> {
-    rdr.sort_unstable();
+pub(crate) fn run(rdr: &mut Records) -> anyhow::Result<Save> {
+    rdr.0.sort_unstable();
     //rdr.reverse();
 
     stdout().execute(EnterAlternateScreen)?;
