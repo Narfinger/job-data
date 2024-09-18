@@ -25,7 +25,7 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
         Status::Declined => Color::Green,
     };
     Row::new(vec![
-        index.to_string(),
+        (index +1).to_string(),
         r.status.to_string(),
         r.last_action_date.to_owned(),
         r.name.to_owned(),
