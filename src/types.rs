@@ -145,7 +145,7 @@ impl<'a> GuiState<'a> {
                 }
         } else {
             let search_string = &self.search.as_ref().unwrap();
-            r.name.contains(*search_string)
+            r.name.contains(*search_string) || r.subname.contains(*search_string)
         }
     }
 
