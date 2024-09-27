@@ -1,25 +1,44 @@
 use std::{
-    cmp::Ordering,
-    fs::File,
-    io::{BufReader, BufWriter},
+    cmp::Ordering, fs::File, io::{BufReader, BufWriter}
 };
-
-use anyhow::Context;
+use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
-use time::{Date, Duration};
+use serde_with::{serde_as, FromInto};
+use time::{Date, Duration, OffsetDateTime};
 use yansi::Paint;
 
 use crate::{
-    types::{Status, CURRENT_OFFSET, DATE_STRING, FORMAT, NOW},
+    types::{Status, FORMAT},
     PATH,
 };
 
+time::serde::format_description!(my_format, Date,"[day]-[month]-[year]");
+#[derive(Serialize, Deserialize)]
+#[serde(transparent)]
+struct MyDate(#[serde(with = "my_format")] Date);
+
+impl From<Date> for MyDate {
+    fn from(value: Date) -> Self {
+        MyDate(value)
+    }
+}
+
+impl From<MyDate> for Date {
+    fn from(value: MyDate) -> Self {
+        value.0
+    }
+}
+
+
+
 /// A record of a job application
+#[serde_as]
 #[derive(Clone, PartialEq, Eq, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub(crate) struct Record {
-    /// the last time any action happened to this job
-    pub(crate) last_action_date: String,
+    /// the last time any action happened to this job we push new strings to the back!
+    #[serde_as(as = "Vec<FromInto<MyDate>>")]
+    last_action_date: Vec<Date>,
     /// the name of the company
     pub(crate) name: String,
     /// the job name
@@ -47,9 +66,7 @@ impl Ord for Record {
         } else if self.status != Status::Todo && other.status == Status::Todo {
             Ordering::Greater
         } else {
-            let my_date: Date = Date::parse(&self.last_action_date, &FORMAT).unwrap();
-            let other_date: Date = Date::parse(&other.last_action_date, &FORMAT).unwrap();
-            my_date.cmp(&other_date).reverse()
+            self.last_action_date.first().unwrap().cmp(&other.last_action_date.first().unwrap()).reverse()
         }
     }
 }
@@ -63,14 +80,26 @@ impl Record {
             stage: String::new(),
             additional_info: String::new(),
             status: Status::Todo,
-            last_action_date: DATE_STRING.clone(),
+            last_action_date: vec![OffsetDateTime::now_local().expect("Error in getting time").date()],
             place,
         }
     }
 
     /// update the last action date
-    fn update_date(&mut self) {
-        self.last_action_date = DATE_STRING.clone();
+    pub(crate) fn update_date(&mut self) {
+        let now = OffsetDateTime::now_local().expect("Error in getting time").date();
+        self.last_action_date.push(now.into());
+    }
+
+    /// returns the date
+    pub(crate) fn get_date(&self) -> &Date {
+        self.last_action_date.last().unwrap()
+    }
+
+    /// returns the last date we had an action formatted
+    pub(crate) fn date_string(&self) -> String {
+        let d = self.last_action_date.last().unwrap();
+        d.format(&FORMAT).unwrap()
     }
 
     /// toggle stage
@@ -93,25 +122,25 @@ impl Record {
 
     /// test if the job is old, i.e., 2 weeks after last action date
     pub(crate) fn is_old(&self) -> bool {
-        let d_primitive_date = Date::parse(&self.last_action_date, &FORMAT)
-            .context("Cannot parse primitive date")
-            .expect("Error");
-        let d_primitive = d_primitive_date
-            .with_hms(0, 0, 0)
-            .context("Could not add time")
-            .expect("Error");
-        let d = d_primitive.assume_offset(*CURRENT_OFFSET);
-        self.status != Status::Todo && *NOW - d >= Duration::weeks(2)
+        let last_time = self.last_action_date.first();
+        let today = OffsetDateTime::now_local().expect("Error in getting time").date();
+        if let Some(l) = last_time {
+            self.status != Status::Todo && today - *l >= Duration::weeks(2)
+        } else {
+            false
+        }
+
     }
 
     /// print one entry
     pub(crate) fn print(&self, index: usize, truncate: bool) -> anyhow::Result<()> {
+        let date = self.last_action_date.first().unwrap().format(&FORMAT)?;
         if truncate && self.is_old() {
             println!(
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
                 index.dim(),
                 self.status.print().dim(),
-                self.last_action_date.dim(),
+                date.dim(),
                 self.name.bold().dim(),
                 self.subname.bold().dim(),
                 self.stage.dim(),
@@ -122,7 +151,7 @@ impl Record {
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
                 index,
                 self.status.print(),
-                self.last_action_date,
+                date,
                 self.name.bold(),
                 self.subname.bold(),
                 self.stage,
@@ -133,7 +162,7 @@ impl Record {
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {} | {}",
                 index,
                 self.status.print(),
-                self.last_action_date,
+                date,
                 self.name.bold(),
                 self.subname.bold(),
                 self.stage,
@@ -152,11 +181,15 @@ impl Records {
     pub(crate) fn load() -> anyhow::Result<Self> {
         let f = File::open(PATH.clone())?;
         let br = BufReader::new(f);
-        let rdr = csv::Reader::from_reader(br)
-            .deserialize()
-            .map(|r| r.unwrap())
-            .collect::<Vec<Record>>();
-        let rej = rdr
+        let d = &mut serde_json::Deserializer::from_reader(br);
+
+        let result: Result<Vec<Record>, _> = serde_path_to_error::deserialize(d);
+        if let Err(e) = result {
+            Err(anyhow!("Error in parsing {}", e))
+        } else {
+
+            let rdr = result.unwrap();
+            let rej = rdr
             .iter()
             .filter(|a| a.status == Status::Declined || a.status == Status::Rejected);
         let pen = rdr.iter().filter(|a| a.status == Status::Pending);
@@ -164,6 +197,7 @@ impl Records {
         Ok(Records(
             rej.chain(pen).chain(todo).cloned().collect::<Vec<Record>>(),
         ))
+    }
     }
 
     /// write records to file

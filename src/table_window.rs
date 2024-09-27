@@ -27,7 +27,7 @@ fn draw_record(index: usize, r: &Record) -> Row<'_> {
     Row::new(vec![
         (index +1).to_string(),
         r.status.to_string(),
-        r.last_action_date.to_owned(),
+        r.date_string(),
         r.name.to_owned(),
         r.subname.to_owned(),
         r.stage.to_owned(),

@@ -26,7 +26,7 @@ pub(crate) fn draw(frame: &mut Frame, _: Rect, state: &GuiState) {
         ]),
         Line::from(vec![
             Span::from("Date: "),
-            Span::from(record.last_action_date.clone()),
+            Span::from(record.date_string()),
         ]),
         Line::from(vec![
             Span::from("Stage: "),

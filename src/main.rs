@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
     sync::LazyLock,
 };
-use types::{Save, Status, DATE_STRING};
+use types::{Save, Status};
 use yansi::Paint;
 
 mod add_window;
@@ -23,7 +23,7 @@ mod types;
 
 static PATH: LazyLock<PathBuf> = LazyLock::new(|| {
     let u = directories::UserDirs::new().expect("Cannot find userdirs");
-    u.document_dir().unwrap().join("job-applications.csv")
+    u.document_dir().unwrap().join("job-applications.json")
 });
 
 #[derive(Parser, Debug)]
@@ -196,7 +196,7 @@ fn main() -> anyhow::Result<()> {
             );
             if ask_if_change(&rdr, i) {
                 rdr.get_mut(i).unwrap().additional_info = v.get(1).unwrap().to_string();
-                rdr.get_mut(i).unwrap().last_action_date = DATE_STRING.clone();
+                rdr.get_mut(i).unwrap().update_date();
                 rdr.write()?;
             }
         } else {
@@ -221,15 +221,7 @@ fn main() -> anyhow::Result<()> {
     } else if cli.open {
         open::that(PATH.clone()).context("Could not open file")?;
     } else if let Some(v) = cli.add {
-        let r = Record {
-            last_action_date: DATE_STRING.clone(),
-            name: v.first().unwrap().clone(),
-            subname: v.get(1).unwrap().clone(),
-            stage: "Pending".to_string(),
-            additional_info: v.get(2).unwrap_or(&String::new()).clone(),
-            status: Status::Todo,
-            place: String::new(),
-        };
+        let r = Record::new(v.first().unwrap().to_string(), v.get(1).unwrap().to_string(), String::new());
         rdr.0.push(r);
         rdr.write()?;
         print(&rdr, true, true)?;

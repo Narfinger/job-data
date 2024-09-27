@@ -4,7 +4,6 @@ use ratatui::{
     text::{Line, Span},
     Frame,
 };
-use time::Date;
 
 use crate::types::{GuiState, Status, DATE_STRING, FORMAT};
 
@@ -41,11 +40,9 @@ fn stats<'a>(state: &'a GuiState) -> Line<'a> {
     let last = state
         .rdr
         .iter()
-        .filter_map(|r| Date::parse(&r.last_action_date, &FORMAT).ok())
+        .map(|r| r.get_date())
         .max()
-        .unwrap()
-        .format(&FORMAT)
-        .unwrap();
+        .unwrap().format(&FORMAT).unwrap();
 
     let spans = vec![
         single_val("Todo", todos, total, Color::Red),
