@@ -66,7 +66,7 @@ impl Ord for Record {
         } else if self.status != Status::Todo && other.status == Status::Todo {
             Ordering::Greater
         } else {
-            self.last_action_date.first().unwrap().cmp(&other.last_action_date.first().unwrap()).reverse()
+            self.last_action_date.first().unwrap().cmp(other.last_action_date.first().unwrap()).reverse()
         }
     }
 }
@@ -88,7 +88,7 @@ impl Record {
     /// update the last action date
     pub(crate) fn update_date(&mut self) {
         let now = OffsetDateTime::now_local().expect("Error in getting time").date();
-        self.last_action_date.push(now.into());
+        self.last_action_date.push(now);
     }
 
     /// returns the date
