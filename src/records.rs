@@ -174,7 +174,9 @@ impl Record {
     }
 }
 
-pub(crate) struct Records(pub(crate) Vec<Record>);
+#[derive(Serialize, Deserialize)]
+pub(crate) struct Records(
+    pub(crate) Vec<Record>);
 
 impl Records {
     /// load records
@@ -204,11 +206,7 @@ impl Records {
     pub(crate) fn write(&self) -> anyhow::Result<()> {
         let f = File::create(PATH.clone())?;
         let br = BufWriter::new(f);
-        let mut wtr = csv::Writer::from_writer(br);
-        for i in &self.0 {
-            wtr.serialize(i)?;
-        }
-        wtr.flush()?;
+        serde_json::to_writer_pretty(br, self)?;
         Ok(())
     }
 
