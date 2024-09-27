@@ -88,7 +88,9 @@ impl Record {
     /// update the last action date
     pub(crate) fn update_date(&mut self) {
         let now = OffsetDateTime::now_local().expect("Error in getting time").date();
-        self.last_action_date.push(now);
+        if self.last_action_date.last().map(|d| *d!=now).unwrap_or(true) {
+            self.last_action_date.push(now);
+        }
     }
 
     /// returns the date
