@@ -66,7 +66,7 @@ impl Ord for Record {
         } else if self.status != Status::Todo && other.status == Status::Todo {
             Ordering::Greater
         } else {
-            self.last_action_date.first().unwrap().cmp(other.last_action_date.first().unwrap()).reverse()
+            self.get_date().cmp(other.get_date()).reverse()
         }
     }
 }
@@ -124,19 +124,13 @@ impl Record {
 
     /// test if the job is old, i.e., 2 weeks after last action date
     pub(crate) fn is_old(&self) -> bool {
-        let last_time = self.last_action_date.first();
         let today = OffsetDateTime::now_local().expect("Error in getting time").date();
-        if let Some(l) = last_time {
-            self.status != Status::Todo && today - *l >= Duration::weeks(2)
-        } else {
-            false
-        }
-
+        self.status != Status::Todo && today - *self.get_date() >= Duration::weeks(2)
     }
 
     /// print one entry
     pub(crate) fn print(&self, index: usize, truncate: bool) -> anyhow::Result<()> {
-        let date = self.last_action_date.first().unwrap().format(&FORMAT)?;
+        let date = self.date_string();
         if truncate && self.is_old() {
             println!(
                 "{:2} | {:-^10} | {:-^20} | {:-^20} | {:^37} | {:^30} | {}",
