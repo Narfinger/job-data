@@ -63,7 +63,7 @@ pub(crate) fn draw(frame: &mut Frame, r: Rect, state: &mut GuiState) {
             ])
             .style(Style::new().bold()),
         )
-        .highlight_style(Style::new().reversed())
+        .row_highlight_style(Style::new().reversed())
         .highlight_symbol(">>")
         .block(Block::bordered());
 
